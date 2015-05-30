@@ -294,7 +294,7 @@ class ToolApp(object):
             )
 
         parser.add_argument(
-            '--asana-api',
+            '-as-api', '--asana-api',
             action='store',
             nargs='?',
             const='',
@@ -303,7 +303,7 @@ class ToolApp(object):
             )
 
         parser.add_argument(
-            '--github-token',
+            '-gh-api', '--github-api',
             action='store',
             nargs='?',
             const='',
