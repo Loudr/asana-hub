@@ -31,7 +31,7 @@ class JSONData(object):
         """Asserts that the version and data file exists."""
 
         if not self.has_key('version'):
-            raise Exception("hubasana.py connect must be run first.")
+            raise Exception("`asana-hub connect` must be run first.")
 
         self.data['version'] = self.version
 

@@ -1,5 +1,5 @@
 """
-Command-line interface for hubasana.
+Command-line interface for asana-hub.
 """
 
 import argparse
@@ -251,10 +251,10 @@ class ToolApp(object):
         # Default paths for settings and data
         def_settings_file = os.path.join(
             os.path.expanduser("~"),
-            '.hubasana',
+            '.asana-hub',
             )
 
-        def_data_file = os.path.expanduser("./.hubasana.proj")
+        def_data_file = os.path.expanduser("./.asana-hub.proj")
 
         parser.add_argument(
             'action',

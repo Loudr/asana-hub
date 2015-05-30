@@ -1,7 +1,7 @@
-# hubasana v0.1.3
+# asana-hub v0.1.3
 
-[![PyPi version](https://img.shields.io/pypi/v/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
-[![PyPi downloads](https://img.shields.io/pypi/dm/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
+[![PyPi version](https://img.shields.io/pypi/v/asana-hub.svg)](https://pypi.python.org/pypi/asana-hub)
+[![PyPi downloads](https://img.shields.io/pypi/dm/asana-hub.svg)](https://pypi.python.org/pypi/asana-hub)
 
 A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.
 
@@ -13,7 +13,7 @@ and _eventually_ keep them in sync.
 Either with `sudo` or in a `virtualenv`:
 
 ```bash
-$ pip install hubasana
+$ pip install asana-hub
 $ hub-asana connect
 ```
 
@@ -53,11 +53,11 @@ https://app.asana.com/0/123456/654321
 
 ```
 
-## .hubasana and .hubasana.proj
+## .asana-hub and .asana-hub.proj
 
-hubasana creates a settings file in your home folder called `.hubasana` to store your asana & github api tokens.
+asana-hub creates a settings file in your home folder called `.asana-hub` to store your asana & github api tokens.
 
-a `.hubasana.proj` exists to maintain sync data in your repository, including:
+a `.asana-hub.proj` exists to maintain sync data in your repository, including:
     * selected github repository id
     * selected asana project id
     * created issues and tasks (for sync)

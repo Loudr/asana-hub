@@ -5,3 +5,7 @@
 .hubasana
 
 MANIFEST
+
+*.sublime-workspace
+
+*.sublime-project
