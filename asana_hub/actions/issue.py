@@ -111,4 +111,4 @@ class Issue(Action):
             asana_task_id, asana_task_url)
 
         # Save issue and task to db.
-        app.save_issue_task(issue.number, asana_task_id)
+        app.save_issue_data_task(issue.number, asana_task_id)

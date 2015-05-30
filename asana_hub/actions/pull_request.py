@@ -78,6 +78,7 @@ class PullRequest(Action):
 
         # Get issue data to create pull request tasks list.
         issue_data = app.get_saved_issue_data(issue)
+
         issue_tasks = issue_data.get('tasks', [])
         issue_data['tasks'] = issue_tasks
 
@@ -130,9 +131,9 @@ class PullRequest(Action):
 
         # Add pull request to local data
         if pull_request.number not in issue_prs:
-            issue_prs[pull_request.number] = [task['id']]
+            issue_prs[pull_request.number] = task_ids
         else:
-            issue_prs[pull_request.number].append(task['id'])
+            issue_prs[pull_request.number].extend(task_ids)
 
         logging.info("github pull_request #%d created:\n%s\n",
             pull_request.number, pull_request.html_url)

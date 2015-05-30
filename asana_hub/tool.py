@@ -130,7 +130,7 @@ class ToolApp(object):
         """Returns key for issue_data in data."""
         return 'issue_data_%s' % namespace
 
-    def save_issue_data(self, issue, task, namespace='open'):
+    def save_issue_data_task(self, issue, task, namespace='open'):
         """Saves a issue data (tasks, etc.) to local data.
 
         Args:
@@ -174,7 +174,9 @@ class ToolApp(object):
         issue_data = self.data.get(issue_data_key,
             {})
 
-        return issue_data.get(str(issue_number))
+        _data = issue_data.get(str(issue_number), {})
+        issue_data[str(issue_number)] = _data
+        return _data
 
     def __init__(self, version):
         """Accepts version of the app."""
