@@ -82,8 +82,8 @@ class PullRequest(Action):
         issue_tasks = issue_data.get('tasks', [])
         issue_data['tasks'] = issue_tasks
 
-        # pull_requests is a map of pr # to list of asana tasks
-        issue_prs = issue_data.get('pull_requests', {})
+        # pull_requests is a list of pull request numbers
+        issue_prs = issue_data.get('pull_requests', [])
         issue_data['pull_requests'] = issue_prs
 
         asana_msgs = ''
@@ -129,11 +129,11 @@ class PullRequest(Action):
                 })
             task_ids.append(task['id'])
 
+            app.save_issue_data_task(issue.number, task['id'])
+
         # Add pull request to local data
         if pull_request.number not in issue_prs:
-            issue_prs[pull_request.number] = task_ids
-        else:
-            issue_prs[pull_request.number].extend(task_ids)
+            issue_prs.append(pull_request.number)
 
         logging.info("github pull_request #%d created:\n%s\n",
             pull_request.number, pull_request.html_url)
