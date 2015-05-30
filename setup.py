@@ -1,10 +1,12 @@
 import os
 
+__VERSION__ = 0.1.1
+
 from distutils.core import setup
 setup(
   name = 'hubasana',
   packages = ['hubasana'],
-  version = '0.1.1',
+  version = str(__VERSION__),
   description = 'A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.',
   license = 'MIT',
   author = 'Josh Whelchel',
