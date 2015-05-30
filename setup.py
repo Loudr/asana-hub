@@ -1,3 +1,5 @@
+import os
+
 from distutils.core import setup
 setup(
   name = 'hubasana',
@@ -17,5 +19,8 @@ setup(
     'certifi',
     'requests',
     'urllib3'
-  ]
+  ],
+  scripts=[os.path.join(".", name) for name in [
+      "hub-asana",
+    ]]
 )

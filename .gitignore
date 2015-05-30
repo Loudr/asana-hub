@@ -1,6 +1,7 @@
 
 *.pyc
-dist
+/dist
+/build
 .hubasana
 
 MANIFEST

@@ -1,4 +1,8 @@
 # hubasana
+
+[![PyPi version](https://pypip.in/v/hubasana/badge.png)](https://crate.io/packages/hubasana/)
+[![PyPi downloads](https://pypip.in/d/hubasana/badge.png)](https://crate.io/packages/hubasana/)
+
 A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.
 
 One-two-three Create an Asana *task* and matching Github *issue* in a repository,
@@ -10,18 +14,18 @@ Either with `sudo` or in a `virtualenv`:
 
 ```bash
 $ pip install -r requirements.txt
-$ python hubasana.py connect
+$ hub-asana connect
 ```
 
 ## Usage
 
 ```bash
 # Connect Asana & Github Accounts
-$ python hubasana.py connect
+$ hub-asana connect
 asana linked.
 github.com account linked.
 
-$ python hubasana.py create
+$ hub-asana create
 Select github.com repository, by name or number.
 1) my-repo
 
