@@ -142,16 +142,19 @@ class ToolApp(object):
                 `str`. Namespace for storing this issue.
         """
 
-        issue_data_key = self._issue_data_key(namespace)
-        issue_data = self.data.get(issue_data_key,
-            {})
+        if isinstance(issue, int):
+            issue_number = str(issue)
+        elif isinstance(issue, basestring):
+            issue_number = issue
+        else:
+            issue_number = issue.number
+
+        issue_data = self.get_saved_issue_data(issue, namespace)
 
         if not issue_data.has_key("tasks"):
-            issue_data['tasks'] = [task]
+            issue_data[issue_number] = [task]
         elif task not in issue_data['tasks']:
-            issue_data['tasks'].append(task)
-
-        self.data[issue_data_key] = issue_data
+            issue_data[issue_number].append(task)
 
     def has_saved_issue_data(self, issue, namespace='open'):
         issue_data_key = self._issue_data_key(namespace)
@@ -212,6 +215,9 @@ class ToolApp(object):
         _id = issue_data.pop(issue_number, None)
         if _id:
             other_issue_data[issue_number] = _id
+
+        self.data[other_issue_data_key] = other_issue_data
+        self.data[issue_data_key] = issue_data
 
     def __init__(self, version):
         """Accepts version of the app."""

@@ -47,33 +47,28 @@ class Sync(Action):
             namespaces.append('closed')
 
         # Load issues that we are tracking.
-        issues = {}
-
-        logging.info("tracking these issues:")
-
-        for issue in repo.get_issues():
-            issue_number = str(issue.number)
-            for ns in namespaces:
-                issues_map = issues[ns] = {}
+        for ns in namespaces:
+            # Iterate over the issues in the opposite state as the namespace
+            # we are in. We simply want to toggle these guys.
+            other_ns = "open" if ns == "closed" else "closed"
+            logging.info("collecting %s issues", other_ns)
+            issues_map ={}
+            for issue in repo.get_issues(state=other_ns):
+                issue_number = str(issue.number)
                 if app.has_saved_issue_data(issue_number, ns):
                     logging.info("\t%d) %s", issue.number, issue.title)
                     issues_map[issue_number] = issue
                     break
 
-        for ns, issue_map in issues.iteritems():
-            other_ns = "open" if ns == "closed" else "closed"
-            for issue_number, issue in issue_map.iteritems():
+            for issue_number, issue in issues_map.iteritems():
 
-                print issue.number, "number"
-                print issue.title, "title"
-                print issue.closed_at, "closed_at"
-                print issue.closed_by, "closed_by"
                 if ((ns == 'open' and not issue.closed_at) or
                     (ns == 'closed' and issue.closed_at)):
                     continue
 
                 issue_data = app.get_saved_issue_data(issue_number, ns)
                 for task_id in issue_data.get('tasks', []):
+                    logging.info("Toggling #%d - %d", issue.number, task_id)
                     task = app.asana.tasks.find_by_id(task_id)
                     if not task: continue
 
@@ -91,7 +86,7 @@ class Sync(Action):
                             'completed': False
                             })
 
-                self.move_saved_issue_data(issue_number, ns, other_ns)
+                app.move_saved_issue_data(issue_number, ns, other_ns)
 
 
 
