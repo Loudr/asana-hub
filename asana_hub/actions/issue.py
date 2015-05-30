@@ -94,15 +94,7 @@ class Issue(Action):
             )
 
         # Create asana comment (story)
-        app.asana.stories.create_on_task(asana_task_id,
-            {
-            'text':
-                "Git Issue #%d: \n"
-                "%s" % (
-                    issue.number,
-                    issue.html_url,
-                    )
-            })
+        app.announce_issue_to_task(asana_task_id, issue)
 
         logging.info("github issue #%d created:\n%s\n",
             issue.number, issue.html_url)

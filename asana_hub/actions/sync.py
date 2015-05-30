@@ -40,6 +40,7 @@ class Sync(Action):
         app.authenticate()
 
         repo, project = self.get_repo_and_project()
+        asana_workspace_id = project['workspace']['id']
         project_id = project['id']
 
         namespaces = ['open']
@@ -55,9 +56,32 @@ class Sync(Action):
             issues_map = {}
             for issue in repo.get_issues(state=other_ns):
                 issue_number = str(issue.number)
-                if app.has_saved_issue_data(issue_number, ns):
-                    logging.info("\t%d) %s", issue.number, issue.title)
+                if (app.has_saved_issue_data(issue_number, ns) or
+                    app.has_saved_issue_data(issue_number, other_ns)):
                     issues_map[issue_number] = issue
+                    status = "cached"
+                else:
+                    task = app.asana.tasks.create_in_workspace(
+                        asana_workspace_id,
+                        {
+                            'name': issue.title,
+                            'notes': issue.body,
+                            # TODO: Correct assignee.
+                            'assignee': 'me',
+                            'projects': [project_id],
+                            'completed': bool(issue.closed_at)
+                        })
+
+                    # Announce task git issue
+                    task_id = task['id']
+                    app.announce_issue_to_task(task_id, issue)
+
+                    # Save task to drive
+                    app.save_issue_data_task(issue_number, task_id, ns)
+                    status = "new task #%d" % task_id
+
+                logging.info("\t%d) %s - %s",
+                    issue.number, issue.title, status)
 
             for issue_number, issue in issues_map.iteritems():
 
@@ -67,9 +91,11 @@ class Sync(Action):
 
                 issue_data = app.get_saved_issue_data(issue_number, ns)
                 for task_id in issue_data.get('tasks', []):
-                    logging.info("Toggling #%d - %d", issue.number, task_id)
-                    task = app.asana.tasks.find_by_id(task_id)
-                    if not task: continue
+                    logging.info("\ttoggling #%d - %d", issue.number, task_id)
+                    task = app.get_asana_task(task_id)
+                    if not task:
+                        logging.debug("task #%d was deleted.", task_id)
+                        continue
 
                     if issue.closed_at:
                         # close task
