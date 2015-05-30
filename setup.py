@@ -1,6 +1,6 @@
 import os
 
-__VERSION__ = 0.1.2
+__VERSION__ = "0.1.2"
 
 from distutils.core import setup
 setup(
