@@ -53,6 +53,14 @@ https://app.asana.com/0/123456/654321
 
 ```
 
+When issue+task pairs are created via `asana-hub`, they may be kept in sync via
+```bash
+$ asana-hub sync
+```
+
+This will iterate over all issues that have closed since the last update, and
+complete any corresponding asana tasks.
+
 ## .asana-hub and .asana-hub.proj
 
 asana-hub creates a settings file in your home folder called `.asana-hub` to store your asana & github api tokens.

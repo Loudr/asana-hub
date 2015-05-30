@@ -56,6 +56,15 @@ Usage
     asana task #654321 created:
     https://app.asana.com/0/123456/654321
 
+When issue+task pairs are created via `asana-hub`, they may be kept in sync via
+
+.. code:: bash
+
+    $ asana-hub sync
+
+This will iterate over all issues that have closed since the last update, and
+complete any corresponding asana tasks.
+
 .asana-hub and .asana-hub.proj
 ------------------------------
 
