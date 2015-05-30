@@ -39,8 +39,13 @@ class ToolApp(object):
         if self.oauth:
             return False
 
-        self.settings.assert_key('api-asana')
-        self.settings.assert_key('api-github')
+        # Save asana.
+        self.settings.apply('api-asana', self.args.asana_api,
+            "enter asana api key")
+
+        # Save github.com
+        self.settings.apply('api-github', self.args.github_api,
+            "enter github.com token")
 
         logging.debug("authenticating asana api.")
         self.asana = Client.basic_auth(self.settings['api-asana'])
@@ -113,14 +118,6 @@ class ToolApp(object):
 
     def connect(self):
         """Connects OAuth libraries."""
-
-        # Save asana.
-        self.settings.apply('api-asana', self.args.asana_api,
-            "enter asana api key")
-
-        # Save github.com
-        self.settings.apply('api-github', self.args.github_api,
-            "enter github.com token")
 
         self.oauth_start()
 

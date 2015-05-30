@@ -49,4 +49,9 @@ https://app.asana.com/0/123456/654321
 
 ```
 
+## `.hubasana`
+
+hubasana creates a settings file called `.hubasana` to store your asana & github api tokens.
+It will also maintain the previously selected project and repository, as a means of acting as a 'project setup'.
+
 
