@@ -151,10 +151,10 @@ class ToolApp(object):
 
         issue_data = self.get_saved_issue_data(issue, namespace)
 
-        if not issue_data.has_key(issue_number):
-            issue_data[issue_number] = [task]
-        elif task not in issue_data[issue_number]:
-            issue_data[issue_number].append(task)
+        if not issue_data.has_key('tasks'):
+            issue_data['tasks'] = [task]
+        elif task not in issue_data['tasks']:
+            issue_data['tasks'].append(task)
 
     def has_saved_issue_data(self, issue, namespace='open'):
         issue_data_key = self._issue_data_key(namespace)
@@ -294,7 +294,7 @@ class ToolApp(object):
             )
 
         parser.add_argument(
-            '--asana-api',
+            '-as-api', '--asana-api',
             action='store',
             nargs='?',
             const='',
@@ -303,7 +303,7 @@ class ToolApp(object):
             )
 
         parser.add_argument(
-            '--github-token',
+            '-gh-api', '--github-api',
             action='store',
             nargs='?',
             const='',
