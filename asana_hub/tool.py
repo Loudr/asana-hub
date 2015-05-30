@@ -151,9 +151,9 @@ class ToolApp(object):
 
         issue_data = self.get_saved_issue_data(issue, namespace)
 
-        if not issue_data.has_key("tasks"):
+        if not issue_data.has_key(issue_number):
             issue_data[issue_number] = [task]
-        elif task not in issue_data['tasks']:
+        elif task not in issue_data[issue_number]:
             issue_data[issue_number].append(task)
 
     def has_saved_issue_data(self, issue, namespace='open'):
