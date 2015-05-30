@@ -174,7 +174,9 @@ class ToolApp(object):
         issue_data = self.data.get(issue_data_key,
             {})
 
-        return issue_data.get(str(issue_number))
+        _data = issue_data.get(str(issue_number), {})
+        issue_data[str(issue_number)] = _data
+        return _data
 
     def __init__(self, version):
         """Accepts version of the app."""
