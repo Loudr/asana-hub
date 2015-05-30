@@ -130,7 +130,7 @@ class ToolApp(object):
         """Returns key for issue_data in data."""
         return 'issue_data_%s' % namespace
 
-    def save_issue_data(self, issue, task, namespace='open'):
+    def save_issue_data_task(self, issue, task, namespace='open'):
         """Saves a issue data (tasks, etc.) to local data.
 
         Args:
