@@ -1,4 +1,4 @@
-asana-hub v0.1.4
+asana-hub v0.1.5
 ================
 
 |PyPi version| |PyPi downloads|
