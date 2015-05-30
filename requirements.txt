@@ -1,0 +1,5 @@
+asana==0.1.5
+PyGithub==1.25.2
+certifi
+requests
+urllib3
