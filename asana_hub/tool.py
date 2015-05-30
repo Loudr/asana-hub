@@ -153,6 +153,20 @@ class ToolApp(object):
 
         self.data[issue_data_key] = issue_data
 
+    def has_saved_issue_data(self, issue, namespace='open'):
+        issue_data_key = self._issue_data_key(namespace)
+        issue_data = self.data.get(issue_data_key,
+            {})
+
+        if isinstance(issue, int):
+            issue_number = str(issue)
+        elif isinstance(issue, basestring):
+            issue_number = issue
+        else:
+            issue_number = issue.number
+
+        return issue_data.has_key(str(issue_number))
+
     def get_saved_issue_data(self, issue, namespace='open'):
         """Returns issue data from local data.
 
@@ -177,6 +191,27 @@ class ToolApp(object):
         _data = issue_data.get(str(issue_number), {})
         issue_data[str(issue_number)] = _data
         return _data
+
+    def move_saved_issue_data(self, issue, ns, other_ns):
+        """Moves an issue_data from one namespace to another."""
+
+        if isinstance(issue, int):
+            issue_number = str(issue)
+        elif isinstance(issue, basestring):
+            issue_number = issue
+        else:
+            issue_number = issue.number
+
+        issue_data_key = self._issue_data_key(ns)
+        other_issue_data_key = self._issue_data_key(other_ns)
+        issue_data = self.data.get(issue_data_key,
+            {})
+        other_issue_data = self.data.get(other_issue_data_key,
+            {})
+
+        _id = issue_data.pop(issue_number, None)
+        if _id:
+            other_issue_data[issue_number] = _id
 
     def __init__(self, version):
         """Accepts version of the app."""
@@ -305,11 +340,6 @@ class ToolApp(object):
             # Instantiate and run
             action = action_class(app=self, args=self.args)
             action.run()
-
-            # Save settings
-            self.settings.save()
-            # Save data
-            self.data.save()
         except AssertionError as exc:
             logging.error("Error: %s", unicode(exc))
             logging.debug("%s", traceback.format_exc())
@@ -319,6 +349,12 @@ class ToolApp(object):
             logging.exception("Exception: %r", exc)
             self.exit_code = 129
             return
+        finally:
+
+            # Save settings
+            self.settings.save()
+            # Save data
+            self.data.save()
 
         self.exit_code = 0
 
