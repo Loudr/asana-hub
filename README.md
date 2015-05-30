@@ -1,4 +1,4 @@
-# hubasana v0.1.2
+# hubasana v0.1.3
 
 [![PyPi version](https://img.shields.io/pypi/v/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
 [![PyPi downloads](https://img.shields.io/pypi/dm/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
