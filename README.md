@@ -112,4 +112,4 @@ a `.asana-hub.proj` exists to maintain sync data in your repository, including:
 An obvious future optimization will be to allow multiple projects,
 selected by `alias`, to be managed in one repository. (#21)
 
-
+See an example of the [.asana-hub.proj](https://github.com/Loudr/asana-hub/blob/master/.asana-hub.proj).
