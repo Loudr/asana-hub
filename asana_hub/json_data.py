@@ -31,7 +31,7 @@ class JSONData(object):
         """Asserts that the version and data file exists."""
 
         if not self.has_key('version'):
-            raise Exception("hubasana.py connect must be run first.")
+            raise Exception("`asana-hub connect` must be run first.")
 
         self.data['version'] = self.version
 
@@ -40,7 +40,8 @@ class JSONData(object):
 
         with open(self.filename, 'wb') as file:
             self.data['version'] = self.version
-            json.dump(self.data, file)
+            json.dump(self.data, file,
+                sort_keys=True, indent=2)
 
     def __setitem__(self, key, value):
         """Set a value by key."""

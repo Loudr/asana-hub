@@ -1,11 +1,12 @@
 """
-Command-line interface for hubasana.
+Command-line interface for asana-hub.
 """
 
 import argparse
 import logging
 import sys
 import os
+import traceback
 
 try:
     from asana import Client
@@ -33,10 +34,12 @@ except ImportError:
         "Did you pip install -r requirements.txt ?")
 
 from .json_data import JSONData
+from .action import Action
 
 class ToolApp(object):
 
-    def oauth_start(self):
+    def authenticate(self):
+        """Connects to Github and Asana and authenticates via OAuth."""
         if self.oauth:
             return False
 
@@ -117,115 +120,61 @@ class ToolApp(object):
 
         return project
 
-    def connect(self):
-        """Connects OAuth libraries."""
-
-        self.oauth_start()
-
-        logging.info("connected ok.")
-
     @classmethod
     def make_asana_url(cls, project_id, task_id):
         """Returns a URL to an asana task."""
         return "https://app.asana.com/0/%d/%d" % (project_id, task_id)
 
-    def create(self):
+    @classmethod
+    def _issue_data_key(cls, namespace):
+        """Returns key for issue_data in data."""
+        return 'issue_data_%s' % namespace
 
-        self.oauth_start()
-
-        # Get repo
-        repo = self.settings.apply('github-repo', self.args.github_repo,
-            self.prompt_repo,
-            on_load=self.github.get_repo,
-            on_save=lambda r: r.id
-            )
-
-        assert repo, "repository not found."
-
-        # Get project
-        project = self.settings.apply('asana-project', self.args.asana_project,
-            self.prompt_project,
-            on_load=self.asana.projects.find_by_id,
-            on_save=lambda p: p['id']
-            )
-
-        assert project, "project not found."
-
-        # Collect title and body
-        title = self.settings.apply(None, self.args.title,
-            "task/issue title",
-            )
-
-        assert title, "title required"
-
-        body = self.settings.apply(None, self.args.body,
-            "body/message",
-            ) or ''
-
-        # Post asana task.
-        asana_workspace_id = project['workspace']['id']
-        task = self.asana.tasks.create_in_workspace(
-            asana_workspace_id,
-            {
-            'name': title,
-            'notes': body,
-            'assignee': 'me',
-            'projects': [project['id']]
-            })
-
-        asana_task_id = task['id']
-        asana_task_url = self.make_asana_url(project['id'], asana_task_id)
-
-        body = body + ("\n\n"
-            "**Asana: #%d**\n"
-            "%s" % (
-                asana_task_id,
-                asana_task_url,
-            ))
-
-        # Create github issue
-        issue = repo.create_issue(
-            title=title,
-            body=body.strip(),
-            )
-
-        # Create asana comment (story)
-        self.asana.stories.create_on_task(asana_task_id,
-            {
-            'text':
-                "Git Issue #%d: \n"
-                "%s" % (
-                    issue.number,
-                    issue.html_url,
-                    )
-            })
-
-        logging.info("github issue #%d created:\n%s\n",
-            issue.number, issue.html_url)
-
-        logging.info("asana task #%d created:\n%s\n",
-            asana_task_id, asana_task_url)
-
-        self.save_issue_task(issue.number, asana_task_id)
-
-    def save_issue_task(self, issue, task, namespace='open'):
-        """Saves a issue & task pair to local data.
+    def save_issue_data(self, issue, task, namespace='open'):
+        """Saves a issue data (tasks, etc.) to local data.
 
         Args:
             issue:
-                `int`. Github issue number. (not number)
+                `int`. Github issue number.
             task:
                 `int`. Asana task ID.
             namespace:
                 `str`. Namespace for storing this issue.
         """
 
-        issue_task_key = 'issue_tasks_%s' % namespace
-        issue_tasks = self.data.get(issue_task_key,
+        issue_data_key = self._issue_data_key(namespace)
+        issue_data = self.data.get(issue_data_key,
             {})
 
-        issue_tasks[issue] = task
-        self.data[issue_task_key] = issue_tasks
+        if not issue_data.has_key("tasks"):
+            issue_data['tasks'] = [task]
+        elif task not in issue_data['tasks']:
+            issue_data['tasks'].append(task)
+
+        self.data[issue_data_key] = issue_data
+
+    def get_saved_issue_data(self, issue, namespace='open'):
+        """Returns issue data from local data.
+
+        Args:
+            issue:
+                `int`. Github issue number.
+            namespace:
+                `str`. Namespace for storing this issue.
+        """
+
+        if isinstance(issue, int):
+            issue_number = str(issue)
+        elif isinstance(issue, basestring):
+            issue_number = issue
+        else:
+            issue_number = issue.number
+
+        issue_data_key = self._issue_data_key(namespace)
+        issue_data = self.data.get(issue_data_key,
+            {})
+
+        return issue_data.get(str(issue_number))
 
     def __init__(self, version):
         """Accepts version of the app."""
@@ -251,20 +200,29 @@ class ToolApp(object):
         # Default paths for settings and data
         def_settings_file = os.path.join(
             os.path.expanduser("~"),
-            '.hubasana',
+            '.asana-hub',
             )
 
-        def_data_file = os.path.expanduser("./.hubasana.proj")
+        def_data_file = os.path.expanduser("./.asana-hub.proj")
+
+        # Load actions
+        actions = {}
+        choices = []
+        help_msgs = ''
+
+        for action in Action.iter_actions():
+            actions[action.name] = action
+            choices.append(action.name)
+            help_msgs += '\n-  %s: %s' % (action.name, action.__doc__)
+
+        help_msgs += '\n'
 
         parser.add_argument(
             'action',
             action='store',
             nargs=1,
-            help='action to take',
-            choices=[
-                'connect',
-                'create',
-            ]
+            help=help_msgs,
+            choices=choices,
             )
 
         parser.add_argument(
@@ -310,41 +268,9 @@ class ToolApp(object):
             help="github api token.",
             )
 
-        parser.add_argument(
-            '--project',
-            action='store',
-            nargs='?',
-            const='',
-            dest='asana_project',
-            help="asana project id.",
-            )
-
-        parser.add_argument(
-            '--repo',
-            action='store',
-            nargs='?',
-            const='',
-            dest='github_repo',
-            help="github repository id.",
-            )
-
-        parser.add_argument(
-            '--title',
-            action='store',
-            nargs='?',
-            const='',
-            dest='title',
-            help="task/issue title.",
-            )
-
-        parser.add_argument(
-            '--body',
-            action='store',
-            nargs='?',
-            const='',
-            dest='body',
-            help="task/issue body.",
-            )
+        # Add action arguments.
+        for action in actions.values():
+            action.add_arguments(parser)
 
         parser.add_argument('-v', '--version', action='version',
             version='%(prog)s ' + '%s' % version)
@@ -368,19 +294,23 @@ class ToolApp(object):
 
         # Load action method and call.
         try:
-            action = self.args.action[0]
-            method = getattr(self, action, None)
-            if method is None:
-                raise NotImplementedError("%s is not implemented." % action)
+            action_name = self.args.action[0]
+            action_class = actions.get(action_name)
+            if not action_class:
+                raise NotImplementedError(
+                    "%s is not implemented." % action_name)
 
-            method()
+            # Instantiate and run
+            action = action_class(app=self, args=self.args)
+            action.run()
 
             # Save settings
             self.settings.save()
             # Save data
             self.data.save()
         except AssertionError as exc:
-            logging.error(unicode(exc))
+            logging.error("Error: %s", unicode(exc))
+            logging.debug("%s", traceback.format_exc())
             self.exit_code = 1
             return
         except Exception as exc:
