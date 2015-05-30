@@ -1,5 +1,5 @@
 # hubasana
-Github Asana Issue Tool
+A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.
 
 One-two-three Create an Asana *task* and matching Github *issue* in a repository,
 and _eventually_ keep them in sync.
