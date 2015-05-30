@@ -1,6 +1,6 @@
 import os
 
-__VERSION__ = "0.1.5"
+__VERSION__ = "0.1.6"
 
 from distutils.core import setup
 setup(
@@ -12,7 +12,7 @@ setup(
   author = 'Josh Whelchel',
   author_email = 'josh+asanahub@loudr.fm',
   url = 'https://github.com/loudr/asana-hub',
-  download_url = 'https://github.com/loudr/asana-hub/tarball/0.1.5',
+  download_url = 'https://github.com/loudr/asana-hub/tarball/0.1.6',
   keywords = ['github', 'asana', 'connect'],
   classifiers = [],
   requires = [

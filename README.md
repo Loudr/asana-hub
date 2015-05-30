@@ -1,4 +1,4 @@
-# asana-hub v0.1.5
+# asana-hub v0.1.6
 
 [![PyPi version](https://img.shields.io/pypi/v/asana-hub.svg)](https://pypi.python.org/pypi/asana-hub)
 [![PyPi downloads](https://img.shields.io/pypi/dm/asana-hub.svg)](https://pypi.python.org/pypi/asana-hub)

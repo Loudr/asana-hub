@@ -1,4 +1,4 @@
-asana-hub v0.1.5
+asana-hub v0.1.6
 ================
 
 .. image:: https://img.shields.io/pypi/v/asana-hub.svg    :target:
