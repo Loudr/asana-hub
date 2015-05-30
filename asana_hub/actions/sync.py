@@ -52,13 +52,12 @@ class Sync(Action):
             # we are in. We simply want to toggle these guys.
             other_ns = "open" if ns == "closed" else "closed"
             logging.info("collecting %s issues", other_ns)
-            issues_map ={}
+            issues_map = {}
             for issue in repo.get_issues(state=other_ns):
                 issue_number = str(issue.number)
                 if app.has_saved_issue_data(issue_number, ns):
                     logging.info("\t%d) %s", issue.number, issue.title)
                     issues_map[issue_number] = issue
-                    break
 
             for issue_number, issue in issues_map.iteritems():
 
