@@ -1,7 +1,7 @@
 # hubasana
 
-[![PyPi version](https://pypip.in/v/hubasana/badge.png)](https://crate.io/packages/hubasana/)
-[![PyPi downloads](https://pypip.in/d/hubasana/badge.png)](https://crate.io/packages/hubasana/)
+[![PyPi version](https://img.shields.io/pypi/v/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
+[![PyPi downloads](https://img.shields.io/pypi/dm/hubasana.svg)](https://pypi.python.org/pypi/hubasana)
 
 A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.
 
