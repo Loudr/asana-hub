@@ -49,9 +49,13 @@ https://app.asana.com/0/123456/654321
 
 ```
 
-## `.hubasana`
+## .hubasana and .hubasana.proj
 
-hubasana creates a settings file called `.hubasana` to store your asana & github api tokens.
-It will also maintain the previously selected project and repository, as a means of acting as a 'project setup'.
+hubasana creates a settings file in your home folder called `.hubasana` to store your asana & github api tokens.
+
+a `.hubasana.proj` exists to maintain sync data in your repository, including:
+    * selected github repository id
+    * selected asana project id
+    * created issues and tasks (for sync)
 
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Github.com / Asana.com issue tool.
 Synchronises creation of github issues and asana tasks.

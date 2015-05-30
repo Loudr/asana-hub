@@ -5,6 +5,7 @@ Command-line interface for hubasana.
 import argparse
 import logging
 import sys
+import os
 
 try:
     from asana import Client
@@ -31,7 +32,7 @@ except ImportError:
     raise Exception("Could not import required packages.\n"
         "Did you pip install -r requirements.txt ?")
 
-from .settings import Settings
+from .json_data import JSONData
 
 class ToolApp(object):
 
@@ -205,6 +206,27 @@ class ToolApp(object):
         logging.info("asana task #%d created:\n%s\n",
             asana_task_id, asana_task_url)
 
+        self.save_issue_task(issue.number, asana_task_id)
+
+    def save_issue_task(self, issue, task, namespace='open'):
+        """Saves a issue & task pair to local data.
+
+        Args:
+            issue:
+                `int`. Github issue number. (not number)
+            task:
+                `int`. Asana task ID.
+            namespace:
+                `str`. Namespace for storing this issue.
+        """
+
+        issue_task_key = 'issue_tasks_%s' % namespace
+        issue_tasks = self.data.get(issue_task_key,
+            {})
+
+        issue_tasks[issue] = task
+        self.data[issue_task_key] = issue_tasks
+
     def __init__(self, version):
         """Accepts version of the app."""
 
@@ -226,6 +248,14 @@ class ToolApp(object):
 
         parser = argparse.ArgumentParser(description='Loudr Utility Tool')
 
+        # Default paths for settings and data
+        def_settings_file = os.path.join(
+            os.path.expanduser("~"),
+            '.hubasana',
+            )
+
+        def_data_file = os.path.expanduser("./.hubasana.proj")
+
         parser.add_argument(
             'action',
             action='store',
@@ -238,7 +268,7 @@ class ToolApp(object):
             )
 
         parser.add_argument(
-            '-d', '--verbose',
+            '-vv', '--verbose',
             action='store_true',
             dest='verbose',
             help="use debugging verbosity.",
@@ -249,8 +279,17 @@ class ToolApp(object):
             action='store',
             nargs='?',
             dest='settings_file',
-            default='.hubasana',
-            help="file to use instead of .hubasana to store oauth & settings.",
+            default=def_settings_file,
+            help="path to save oauth api keys.",
+            )
+
+        parser.add_argument(
+            '-d', '--data-file',
+            action='store',
+            nargs='?',
+            dest='data_file',
+            default=def_data_file,
+            help="path to save repository and project based data.",
             )
 
         parser.add_argument(
@@ -321,7 +360,11 @@ class ToolApp(object):
             ch.setLevel(logging.DEBUG)
 
         # Load settings
-        self.settings = Settings(args=self.args, version=version)
+        self.settings = JSONData(filename=self.args.settings_file,
+            args=self.args, version=version)
+
+        self.data = JSONData(filename=self.args.data_file,
+            args=self.args, version=version)
 
         # Load action method and call.
         try:
@@ -334,6 +377,8 @@ class ToolApp(object):
 
             # Save settings
             self.settings.save()
+            # Save data
+            self.data.save()
         except AssertionError as exc:
             logging.error(unicode(exc))
             self.exit_code = 1

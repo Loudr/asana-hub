@@ -1,16 +1,25 @@
 """
-Maintains JSON based settings file manipulated as a dictionary.
+Maintains JSON based data file manipulated as a dictionary.
 """
 
 import json
 
-class Settings(object):
+class JSONData(object):
 
-    def __init__(self, args, version):
+    def __init__(self, filename, args, version):
+        """
+        Args:
+            filename:
+                Filename for database.
+            args:
+                Program arguments.
+            version:
+                Version of file.
+        """
         self.args = args
         self.version = version
 
-        self.filename = args.settings_file or ".hubasana"
+        self.filename = filename
 
         try:
             with open(self.filename, 'rb') as file:
@@ -19,7 +28,7 @@ class Settings(object):
             self.data = {}
 
     def assert_version(self):
-        """Asserts that the version and settings file exists."""
+        """Asserts that the version and data file exists."""
 
         if not self.has_key('version'):
             raise Exception("hubasana.py connect must be run first.")
@@ -27,18 +36,18 @@ class Settings(object):
         self.data['version'] = self.version
 
     def save(self):
-        """Save settings."""
+        """Save data."""
 
         with open(self.filename, 'wb') as file:
             self.data['version'] = self.version
             json.dump(self.data, file)
 
     def __setitem__(self, key, value):
-        """Set a settings value by key."""
+        """Set a value by key."""
         self.data[key] = value
 
     def __getitem__(self, key):
-        """Get a settings value by key."""
+        """Get a value by key."""
         return self.data[key]
 
     def apply(self, key, value, prompt, on_load=lambda a: a, on_save=lambda a: a):
@@ -46,7 +55,7 @@ class Settings(object):
 
         Returns without prompting if either of the following:
             * `value` is not `None`
-            * already present in the settings
+            * already present in the dictionary
 
         Args:
             prompt:
@@ -87,7 +96,7 @@ class Settings(object):
         return on_load(self.data[key])
 
     def assert_key(self, key):
-        assert self.data.get(key), "%s missing from settings" % key
+        assert self.data.get(key), "%s missing from data" % key
 
     def has_key(self, *args, **kwargs):
         return self.data.has_key(*args, **kwargs)
