@@ -40,7 +40,8 @@ class JSONData(object):
 
         with open(self.filename, 'wb') as file:
             self.data['version'] = self.version
-            json.dump(self.data, file)
+            json.dump(self.data, file,
+                sort_keys=True, indent=2)
 
     def __setitem__(self, key, value):
         """Set a value by key."""

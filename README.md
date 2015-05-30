@@ -14,18 +14,18 @@ Either with `sudo` or in a `virtualenv`:
 
 ```bash
 $ pip install asana-hub
-$ hub-asana connect
+$ asana-hub connect
 ```
 
 ## Usage
 
 ```bash
 # Connect Asana & Github Accounts
-$ hub-asana connect
+$ asana-hub connect
 asana linked.
 github.com account linked.
 
-$ hub-asana create
+$ asana-hub create
 Select github.com repository, by name or number.
 1) my-repo
 

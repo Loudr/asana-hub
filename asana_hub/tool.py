@@ -33,10 +33,12 @@ except ImportError:
         "Did you pip install -r requirements.txt ?")
 
 from .json_data import JSONData
+from .action import Action
 
 class ToolApp(object):
 
-    def oauth_start(self):
+    def authenticate(self):
+        """Connects to Github and Asana and authenticates via OAuth."""
         if self.oauth:
             return False
 
@@ -117,96 +119,10 @@ class ToolApp(object):
 
         return project
 
-    def connect(self):
-        """Connects OAuth libraries."""
-
-        self.oauth_start()
-
-        logging.info("connected ok.")
-
     @classmethod
     def make_asana_url(cls, project_id, task_id):
         """Returns a URL to an asana task."""
         return "https://app.asana.com/0/%d/%d" % (project_id, task_id)
-
-    def create(self):
-
-        self.oauth_start()
-
-        # Get repo
-        repo = self.settings.apply('github-repo', self.args.github_repo,
-            self.prompt_repo,
-            on_load=self.github.get_repo,
-            on_save=lambda r: r.id
-            )
-
-        assert repo, "repository not found."
-
-        # Get project
-        project = self.settings.apply('asana-project', self.args.asana_project,
-            self.prompt_project,
-            on_load=self.asana.projects.find_by_id,
-            on_save=lambda p: p['id']
-            )
-
-        assert project, "project not found."
-
-        # Collect title and body
-        title = self.settings.apply(None, self.args.title,
-            "task/issue title",
-            )
-
-        assert title, "title required"
-
-        body = self.settings.apply(None, self.args.body,
-            "body/message",
-            ) or ''
-
-        # Post asana task.
-        asana_workspace_id = project['workspace']['id']
-        task = self.asana.tasks.create_in_workspace(
-            asana_workspace_id,
-            {
-            'name': title,
-            'notes': body,
-            'assignee': 'me',
-            'projects': [project['id']]
-            })
-
-        asana_task_id = task['id']
-        asana_task_url = self.make_asana_url(project['id'], asana_task_id)
-
-        body = body + ("\n\n"
-            "**Asana: #%d**\n"
-            "%s" % (
-                asana_task_id,
-                asana_task_url,
-            ))
-
-        # Create github issue
-        issue = repo.create_issue(
-            title=title,
-            body=body.strip(),
-            )
-
-        # Create asana comment (story)
-        self.asana.stories.create_on_task(asana_task_id,
-            {
-            'text':
-                "Git Issue #%d: \n"
-                "%s" % (
-                    issue.number,
-                    issue.html_url,
-                    )
-            })
-
-        logging.info("github issue #%d created:\n%s\n",
-            issue.number, issue.html_url)
-
-        logging.info("asana task #%d created:\n%s\n",
-            asana_task_id, asana_task_url)
-
-        self.save_issue_task(issue.number, asana_task_id)
 
     def save_issue_task(self, issue, task, namespace='open'):
         """Saves a issue & task pair to local data.
@@ -221,11 +137,15 @@ class ToolApp(object):
         """
 
         issue_task_key = 'issue_tasks_%s' % namespace
-        issue_tasks = self.data.get(issue_task_key,
+        issue_data = self.data.get(issue_task_key,
             {})
 
-        issue_tasks[issue] = task
-        self.data[issue_task_key] = issue_tasks
+        if not issue_data.has_key("tasks"):
+            issue_data['tasks'] = [task]
+        elif task not in issue_data['tasks']:
+            issue_data['tasks'].append(task)
+
+        self.data[issue_task_key] = issue_data
 
     def __init__(self, version):
         """Accepts version of the app."""
@@ -256,15 +176,22 @@ class ToolApp(object):
 
         def_data_file = os.path.expanduser("./.asana-hub.proj")
 
+        # Load actions
+        actions = {}
+        choices = []
+        help_msgs = ''
+
+        for action in Action.iter_actions():
+            actions[action.name] = action
+            choices.append(action.name)
+            help_msgs += '\n%s: %s' % (action.name, action.__doc__)
+
         parser.add_argument(
             'action',
             action='store',
             nargs=1,
-            help='action to take',
-            choices=[
-                'connect',
-                'create',
-            ]
+            help=help_msgs,
+            choices=choices,
             )
 
         parser.add_argument(
@@ -368,12 +295,15 @@ class ToolApp(object):
 
         # Load action method and call.
         try:
-            action = self.args.action[0]
-            method = getattr(self, action, None)
-            if method is None:
-                raise NotImplementedError("%s is not implemented." % action)
+            action_name = self.args.action[0]
+            action_class = actions.get(action_name)
+            if not action_class:
+                raise NotImplementedError(
+                    "%s is not implemented." % action_name)
 
-            method()
+            # Instantiate and run
+            action = action_class(app=self, args=self.args)
+            action.run()
 
             # Save settings
             self.settings.save()
