@@ -10,6 +10,7 @@ import traceback
 
 try:
     from asana import Client
+    from asana import error as asana_errors
     from github import Github
 
     import urllib3
@@ -142,13 +143,6 @@ class ToolApp(object):
                 `str`. Namespace for storing this issue.
         """
 
-        if isinstance(issue, int):
-            issue_number = str(issue)
-        elif isinstance(issue, basestring):
-            issue_number = issue
-        else:
-            issue_number = issue.number
-
         issue_data = self.get_saved_issue_data(issue, namespace)
 
         if not issue_data.has_key('tasks'):
@@ -218,6 +212,26 @@ class ToolApp(object):
 
         self.data[other_issue_data_key] = other_issue_data
         self.data[issue_data_key] = issue_data
+
+    def announce_issue_to_task(self, asana_task_id, issue):
+        """Creates a story on a task announcing the issue."""
+        return self.asana.stories.create_on_task(asana_task_id,
+            {
+            'text':
+                "Git Issue #%d: \n"
+                "%s" % (
+                    issue.number,
+                    issue.html_url,
+                    )
+            })
+
+    def get_asana_task(self, asana_task_id):
+        """Retrieves a task from asana."""
+
+        try:
+            return self.asana.tasks.find_by_id(asana_task_id)
+        except asana_errors.NotFoundError:
+            return None
 
     def __init__(self, version):
         """Accepts version of the app."""
