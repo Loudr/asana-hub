@@ -6,6 +6,7 @@ import argparse
 import logging
 import sys
 import os
+import traceback
 
 try:
     from asana import Client
@@ -124,20 +125,25 @@ class ToolApp(object):
         """Returns a URL to an asana task."""
         return "https://app.asana.com/0/%d/%d" % (project_id, task_id)
 
-    def save_issue_task(self, issue, task, namespace='open'):
-        """Saves a issue & task pair to local data.
+    @classmethod
+    def _issue_data_key(cls, namespace):
+        """Returns key for issue_data in data."""
+        return 'issue_data_%s' % namespace
+
+    def save_issue_data(self, issue, task, namespace='open'):
+        """Saves a issue data (tasks, etc.) to local data.
 
         Args:
             issue:
-                `int`. Github issue number. (not number)
+                `int`. Github issue number.
             task:
                 `int`. Asana task ID.
             namespace:
                 `str`. Namespace for storing this issue.
         """
 
-        issue_task_key = 'issue_tasks_%s' % namespace
-        issue_data = self.data.get(issue_task_key,
+        issue_data_key = self._issue_data_key(namespace)
+        issue_data = self.data.get(issue_data_key,
             {})
 
         if not issue_data.has_key("tasks"):
@@ -145,7 +151,30 @@ class ToolApp(object):
         elif task not in issue_data['tasks']:
             issue_data['tasks'].append(task)
 
-        self.data[issue_task_key] = issue_data
+        self.data[issue_data_key] = issue_data
+
+    def get_saved_issue_data(self, issue, namespace='open'):
+        """Returns issue data from local data.
+
+        Args:
+            issue:
+                `int`. Github issue number.
+            namespace:
+                `str`. Namespace for storing this issue.
+        """
+
+        if isinstance(issue, int):
+            issue_number = str(issue)
+        elif isinstance(issue, basestring):
+            issue_number = issue
+        else:
+            issue_number = issue.number
+
+        issue_data_key = self._issue_data_key(namespace)
+        issue_data = self.data.get(issue_data_key,
+            {})
+
+        return issue_data.get(str(issue_number))
 
     def __init__(self, version):
         """Accepts version of the app."""
@@ -184,7 +213,9 @@ class ToolApp(object):
         for action in Action.iter_actions():
             actions[action.name] = action
             choices.append(action.name)
-            help_msgs += '\n%s: %s' % (action.name, action.__doc__)
+            help_msgs += '\n-  %s: %s' % (action.name, action.__doc__)
+
+        help_msgs += '\n'
 
         parser.add_argument(
             'action',
@@ -237,41 +268,9 @@ class ToolApp(object):
             help="github api token.",
             )
 
-        parser.add_argument(
-            '--project',
-            action='store',
-            nargs='?',
-            const='',
-            dest='asana_project',
-            help="asana project id.",
-            )
-
-        parser.add_argument(
-            '--repo',
-            action='store',
-            nargs='?',
-            const='',
-            dest='github_repo',
-            help="github repository id.",
-            )
-
-        parser.add_argument(
-            '--title',
-            action='store',
-            nargs='?',
-            const='',
-            dest='title',
-            help="task/issue title.",
-            )
-
-        parser.add_argument(
-            '--body',
-            action='store',
-            nargs='?',
-            const='',
-            dest='body',
-            help="task/issue body.",
-            )
+        # Add action arguments.
+        for action in actions.values():
+            action.add_arguments(parser)
 
         parser.add_argument('-v', '--version', action='version',
             version='%(prog)s ' + '%s' % version)
@@ -310,7 +309,8 @@ class ToolApp(object):
             # Save data
             self.data.save()
         except AssertionError as exc:
-            logging.error(unicode(exc))
+            logging.error("Error: %s", unicode(exc))
+            logging.debug("%s", traceback.format_exc())
             self.exit_code = 1
             return
         except Exception as exc:

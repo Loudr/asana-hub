@@ -15,29 +15,44 @@ class Issue(Action):
     # name of action
     name = "issue"
 
+    @classmethod
+    def add_arguments(cls, parser):
+        """Add arguments to the parser for collection in app.args.
+
+        Args:
+            parser:
+                `argparse.ArgumentParser`. Parser.
+                Arguments added here are server on
+                self.args.
+        """
+
+        parser.add_argument(
+            '-t', '--title',
+            action='store',
+            nargs='?',
+            const='',
+            dest='title',
+            help="[issue] task/issue title.",
+            )
+
+        parser.add_argument(
+            '-b', '--body',
+            action='store',
+            nargs='?',
+            const='',
+            dest='body',
+            help="[issue] task/issue body.",
+            )
+
+        pass
+
     def run(self):
         app = self.app
 
         # OAuth 2 exchange.
         app.authenticate()
 
-        # Get repo
-        repo = app.settings.apply('github-repo', app.args.github_repo,
-            app.prompt_repo,
-            on_load=app.github.get_repo,
-            on_save=lambda r: r.id
-            )
-
-        assert repo, "repository not found."
-
-        # Get project
-        project = app.settings.apply('asana-project', app.args.asana_project,
-            app.prompt_project,
-            on_load=app.asana.projects.find_by_id,
-            on_save=lambda p: p['id']
-            )
-
-        assert project, "project not found."
+        repo, project = self.get_repo_and_project()
 
         # Collect title and body
         title = app.settings.apply(None, app.args.title,
@@ -57,6 +72,7 @@ class Issue(Action):
             {
             'name': title,
             'notes': body,
+            # TODO: Correct assignee.
             'assignee': 'me',
             'projects': [project['id']]
             })
