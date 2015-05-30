@@ -12,7 +12,7 @@ setup(
   author = 'Josh Whelchel',
   author_email = 'josh+asanahub@loudr.fm',
   url = 'https://github.com/loudr/asana-hub',
-  download_url = 'https://github.com/loudr/asana-hub/tarball/0.2.0',
+  download_url = 'https://github.com/Loudr/asana-hub/archive/%22'+__VERSION__+'%22.tar.gz',
   keywords = ['github', 'asana', 'connect'],
   classifiers = [],
   requires = [
