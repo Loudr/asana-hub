@@ -89,6 +89,12 @@ When issues and tasks are created via `asana-hub issue`, they may be kept in syn
 ```bash
 $ git checkout master  # keep master in sync, or potential merge conflicts loom
 $ asana-hub sync
+
+collecting closed issues
+    19) better usage docs
+Toggling #19 - 36089434604514
+    20) better usage docs
+Toggling #20 - 34535923490243
 ```
 
 This will iterate over all issues that have closed since the last update, and
