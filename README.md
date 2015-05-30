@@ -13,7 +13,7 @@ and _eventually_ keep them in sync.
 Either with `sudo` or in a `virtualenv`:
 
 ```bash
-$ pip install -r requirements.txt
+$ pip install hubasana
 $ hub-asana connect
 ```
 
