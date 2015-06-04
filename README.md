@@ -29,6 +29,36 @@ You will be prompted by asana api key and github token (for `repo`, `user`, `gis
 These may also be passed via command line arguments as `-gh-api` and `-as-api`.
 These settings will be stored in `~/.asana-hub `.
 
+
+### Syncing Task Issue Status -> Asana Tasks - `sync`
+
+The main appeal of asana-hub is to **keep issue statuses propogated to asana.**
+
+`asana-hub sync` is responsible for iterating over all issues in a repository,
+and ensuring that tasks mentioned inside of issue descriptions are connected and
+kept in sync.
+
+```bash
+$ git checkout master  # keep master in sync, or potential merge conflicts loom
+$ asana-hub sync
+
+collecting github.com issues
+    20) better usage docs - no task
+    1) Create successful task/issue in correct repo. - no task
+    updating #27 (open->closed) - 36700026060600
+    updating #27 (open->closed) - 36700026060602
+    updating #27 (open->closed) - 36700026060604
+    updating #27 (open->closed) - 36700026060606
+```
+
+This will iterate over all issues that have closed since the last update, and
+complete any corresponding asana tasks.
+
+Issues that have no asana tasks are always reported as `- no task`.
+
+To create tasks automatically for issues that lack tasks, use `--create-missing-tasks`.
+
+
 ### Creating a new issue & task - `issue`
 
 Create a new asana task and github.com issue simultaneously. A connection is kept
@@ -48,6 +78,17 @@ https://app.asana.com/0/36084070893405/36089434604514
 (see how this changed in the history of [77d58c0777045fc82b85e6f94a39db4ea3116b62](https://github.com/Loudr/asana-hub/commit/77d58c0777045fc82b85e6f94a39db4ea3116b62))
 
 `asana-hub sync` updates the asana task status when the issue changes status (open->closed).
+
+
+#### What about issues I create on github.com?
+
+Creating an issue on github without using `asana-hub` is expected behavior.
+Any `#ASANATASKS` named in the body of the issue in the format of `#2394233842334`
+are automatically connected.
+
+Connecting your issues and asana tasks is as simple as including all asana task IDs
+on the issue body.
+
 
 ### Creating a new pull request & task
 
@@ -83,22 +124,6 @@ Likewise, if those pull requests include "fixes #19" in the description,
 as these pull requests do by default, the issue will be closed and the
 issue's task on asana will be completed.
 
-### Syncing Task Issue Status -> Asana Tasks - `sync`
-
-When issues and tasks are created via `asana-hub issue`, they may be kept in sync via
-```bash
-$ git checkout master  # keep master in sync, or potential merge conflicts loom
-$ asana-hub sync
-
-collecting closed issues
-    19) better usage docs
-Toggling #19 - 36089434604514
-    20) better usage docs
-Toggling #20 - 34535923490243
-```
-
-This will iterate over all issues that have closed since the last update, and
-complete any corresponding asana tasks.
 
 ## .asana-hub and .asana-hub.proj
 
