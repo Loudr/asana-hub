@@ -6,8 +6,12 @@ Syncs completion status of issues and their matched tasks.
 """
 
 import logging
+import re
 
 from ..action import Action
+
+ASANA_ID_RE = re.compile(r'#(\d{12,16})')
+"""Regular expression for capturing asana IDs."""
 
 class Sync(Action):
     """Syncs completion status of issues and their matched tasks."""
@@ -33,6 +37,13 @@ class Sync(Action):
             help="[sync] create asana tasks for issues without tasks"
             )
 
+    def apply_tasks_to_issue(self, issue, tasks):
+        """Applies task numbers to an issue."""
+        task_numbers = "\n".join('#'+str(tid) for tid in tasks)
+        if task_numbers:
+            new_body = issue.body + "\n## Asana Tasks:\n%s" % task_numbers
+            issue.edit(body=new_body)
+
     def run(self):
         app = self.app
 
@@ -49,12 +60,33 @@ class Sync(Action):
         issues_map = {}
         for issue in repo.get_issues(state="all"):
             issue_number = str(issue.number)
+            asana_match = ASANA_ID_RE.match(issue.body)
+
             if (app.has_saved_issue_data(issue_number, "closed") or
                 app.has_saved_issue_data(issue_number, "open")):
                 issues_map[issue_number] = issue
                 status = "cached"
 
+                if not asana_match:
+                    # Update body with asana task #
+                    closed_tasks = \
+                        app.get_saved_issue_data(issue, 'closed').get('tasks', [])
+                    open_tasks = \
+                        app.get_saved_issue_data(issue, 'open').get('tasks', [])
+
+                    # Add tasks if we have any.
+                    if open_tasks or closed_tasks:
+                        self.apply_tasks_to_issue(issue,
+                            open_tasks + closed_tasks)
+                        status = "updated with asana #s"
+
+            # else, missing tasks
+            elif asana_match:
+                print issue.body
+                assert False, "OK"
+
             elif self.args.create_missing_tasks and not issue.pull_request:
+                # missing task
                 # Create tasks for non-prs
                 task = app.asana.tasks.create_in_workspace(
                     asana_workspace_id,
