@@ -10,8 +10,11 @@ import re
 
 from ..action import Action
 
-ASANA_ID_RE = re.compile(r'#(\d{12,16})')
+ASANA_ID_RE = re.compile(r'#(\d{12,16})', re.M)
 """Regular expression for capturing asana IDs."""
+
+ASANA_MULTI_RE = re.compile(r'## Asana Tasks:\n(#(\d{12,})\s*)+', re.M)
+"""Regular exprsssion to catch malformed data due to too many tasks."""
 
 class Sync(Action):
     """Syncs completion status of issues and their matched tasks."""
@@ -41,7 +44,8 @@ class Sync(Action):
         """Applies task numbers to an issue."""
         task_numbers = "\n".join('#'+str(tid) for tid in tasks)
         if task_numbers:
-            new_body = issue.body + "\n## Asana Tasks:\n%s" % task_numbers
+            new_body = ASANA_MULTI_RE.sub('', issue.body)
+            new_body = new_body + "\n## Asana Tasks:\n\n%s" % task_numbers
             issue.edit(body=new_body)
 
     def run(self):
@@ -60,7 +64,13 @@ class Sync(Action):
         issues_map = {}
         for issue in repo.get_issues(state="all"):
             issue_number = str(issue.number)
-            asana_match = ASANA_ID_RE.match(issue.body)
+            issue_body = issue.body
+            asana_match = ASANA_ID_RE.search(issue_body)
+            multi_match = ASANA_MULTI_RE.search(issue_body)
+
+            if multi_match:
+                issue_body = ASANA_MULTI_RE.sub('', issue_body)
+                asana_match = None
 
             if (app.has_saved_issue_data(issue_number, "closed") or
                 app.has_saved_issue_data(issue_number, "open")):
@@ -82,7 +92,7 @@ class Sync(Action):
 
             # else, missing tasks
             elif asana_match:
-                print issue.body
+                print issue_body
                 assert False, "OK"
 
             elif self.args.create_missing_tasks and not issue.pull_request:
@@ -92,7 +102,7 @@ class Sync(Action):
                     asana_workspace_id,
                     {
                         'name': issue.title,
-                        'notes': issue.body,
+                        'notes': issue_body,
                         # TODO: Correct assignee.
                         'assignee': 'me',
                         'projects': [project_id],
