@@ -73,6 +73,8 @@ class Sync(Action):
             asana_match = ASANA_ID_RE.search(issue_body)
             multi_match_sections = len(ASANA_SECTION_RE.findall(issue_body)) > 1
 
+            state = issue.state
+            other_state = 'open' if state == 'closed' else 'closed'
             status = "cached"
 
             # Collect closed and opened tasks known for this issue.
@@ -107,7 +109,10 @@ class Sync(Action):
 
             # If we have tasks already, this issue is cached.
             if recorded_tasks:
-                issues_map[issue_number] = issue
+                issue_data = app.get_saved_issue_data(issue_number, other_state)
+                issue_cached_tasks = issue_data.get('tasks', [])
+
+                issues_map[issue_number] = (issue, issue_cached_tasks)
 
                 # If the body is missing asana tasks, add all those we know
                 # about.
@@ -130,7 +135,7 @@ class Sync(Action):
                 self.apply_tasks_to_issue(issue, my_tasks,
                     issue_body=issue_body)
 
-                issues_map[issue_number] = issue
+                issues_map[issue_number] = (issue, my_tasks)
 
             elif self.args.create_missing_tasks and not issue.pull_request:
                 # missing task
@@ -164,17 +169,15 @@ class Sync(Action):
 
         # Refresh status of issue/tasks
         logging.info("refreshing task statuses...")
-        for issue_number, issue in issues_map.iteritems():
+        for issue_number, (issue, issue_tasks) in issues_map.iteritems():
 
             state = issue.state
             other_state = 'open' if state == 'closed' else 'closed'
 
             # Get tasks in the issue that are outdated.
-            issue_data = app.get_saved_issue_data(issue_number, other_state)
-            issue_tasks = issue_data.get('tasks', [])
-
             for task_id in issue_tasks:
-                logging.info("\tupdating (%s->%s) - %d",
+                logging.info("\t#%d - updating (%s->%s) - %d",
+                    issue.number,
                     other_state, state,
                     task_id)
                 task = app.get_asana_task(task_id)
