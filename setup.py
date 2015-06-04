@@ -15,9 +15,9 @@ setup(
   download_url = 'https://github.com/Loudr/asana-hub/archive/%22'+__VERSION__+'%22.tar.gz',
   keywords = ['github', 'asana', 'connect'],
   classifiers = [],
-  requires = [
-    'asana',
-    'PyGithub',
+  install_requires = [
+    'asana>=0.1.5',
+    'PyGithub>=1.25.2',
     'certifi',
     'requests',
     'urllib3'
