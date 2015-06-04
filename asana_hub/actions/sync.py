@@ -33,6 +33,13 @@ class Sync(Action):
             help="[sync] should sync full?",
             )
 
+        parser.add_argument(
+            '--create-missing-tasks',
+            action='store_true',
+            dest='create_missing_tasks',
+            help="[sync] create asana tasks for issues without tasks"
+            )
+
     def run(self):
         app = self.app
 
@@ -60,7 +67,7 @@ class Sync(Action):
                     app.has_saved_issue_data(issue_number, other_ns)):
                     issues_map[issue_number] = issue
                     status = "cached"
-                else:
+                elif self.args.create_missing_tasks:
                     task = app.asana.tasks.create_in_workspace(
                         asana_workspace_id,
                         {
@@ -79,6 +86,8 @@ class Sync(Action):
                     # Save task to drive
                     app.save_issue_data_task(issue_number, task_id, ns)
                     status = "new task #%d" % task_id
+                else:
+                    status = "no task"
 
                 logging.info("\t%d) %s - %s",
                     issue.number, issue.title, status)
