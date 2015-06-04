@@ -27,13 +27,6 @@ class Sync(Action):
         """
 
         parser.add_argument(
-            '-full', '--sync-full',
-            action='store_true',
-            dest='sync_full',
-            help="[sync] should sync full?",
-            )
-
-        parser.add_argument(
             '--create-missing-tasks',
             action='store_true',
             dest='create_missing_tasks',
@@ -50,77 +43,82 @@ class Sync(Action):
         asana_workspace_id = project['workspace']['id']
         project_id = project['id']
 
-        namespaces = ['open']
-        if self.args.sync_full:
-            namespaces.append('closed')
+        # Iterate over the issues in the opposite state as the namespace
+        # we are in. We simply want to toggle these guys.
+        logging.info("collecting github.com issues")
+        issues_map = {}
+        for issue in repo.get_issues(state="all"):
+            issue_number = str(issue.number)
+            if (app.has_saved_issue_data(issue_number, "closed") or
+                app.has_saved_issue_data(issue_number, "open")):
+                issues_map[issue_number] = issue
+                status = "cached"
 
-        # Load issues that we are tracking.
-        for ns in namespaces:
-            # Iterate over the issues in the opposite state as the namespace
-            # we are in. We simply want to toggle these guys.
-            other_ns = "open" if ns == "closed" else "closed"
-            logging.info("collecting %s issues", other_ns)
-            issues_map = {}
-            for issue in repo.get_issues(state=other_ns):
-                issue_number = str(issue.number)
-                if (app.has_saved_issue_data(issue_number, ns) or
-                    app.has_saved_issue_data(issue_number, other_ns)):
-                    issues_map[issue_number] = issue
-                    status = "cached"
-                elif self.args.create_missing_tasks:
-                    task = app.asana.tasks.create_in_workspace(
-                        asana_workspace_id,
-                        {
-                            'name': issue.title,
-                            'notes': issue.body,
-                            # TODO: Correct assignee.
-                            'assignee': 'me',
-                            'projects': [project_id],
-                            'completed': bool(issue.closed_at)
-                        })
+            elif self.args.create_missing_tasks and not issue.pull_request:
+                # Create tasks for non-prs
+                task = app.asana.tasks.create_in_workspace(
+                    asana_workspace_id,
+                    {
+                        'name': issue.title,
+                        'notes': issue.body,
+                        # TODO: Correct assignee.
+                        'assignee': 'me',
+                        'projects': [project_id],
+                        'completed': bool(issue.closed_at)
+                    })
 
-                    # Announce task git issue
-                    task_id = task['id']
-                    app.announce_issue_to_task(task_id, issue)
+                # Announce task git issue
+                task_id = task['id']
+                app.announce_issue_to_task(task_id, issue)
 
-                    # Save task to drive
-                    app.save_issue_data_task(issue_number, task_id, ns)
-                    status = "new task #%d" % task_id
-                else:
-                    status = "no task"
+                # Save task to drive
+                app.save_issue_data_task(issue_number, task_id,
+                    issue.state)
+                status = "new task #%d" % task_id
 
-                logging.info("\t%d) %s - %s",
-                    issue.number, issue.title, status)
+            else:
+                status = "no task"
 
-            for issue_number, issue in issues_map.iteritems():
+            logging.info("\t%d) %s - %s",
+                issue.number, issue.title, status)
 
-                if ((ns == 'open' and not issue.closed_at) or
-                    (ns == 'closed' and issue.closed_at)):
+        # Refresh status of issue/tasks
+        for issue_number, issue in issues_map.iteritems():
+
+            state = issue.state
+            other_state = 'open' if state == 'closed' else 'closed'
+
+            # Get tasks in the issue that are outdated.
+            issue_data = app.get_saved_issue_data(issue_number, other_state)
+            issue_tasks = issue_data.get('tasks', [])
+
+            for task_id in issue_tasks:
+                logging.info("\tupdating #%d (%s->%s) - %d",
+                    issue.number,
+                    other_state, state,
+                    task_id)
+                task = app.get_asana_task(task_id)
+                if not task:
+                    issue_tasks.remove(task_id)
+                    logging.debug("task #%d was deleted.", task_id)
                     continue
 
-                issue_data = app.get_saved_issue_data(issue_number, ns)
-                for task_id in issue_data.get('tasks', []):
-                    logging.info("\ttoggling #%d - %d", issue.number, task_id)
-                    task = app.get_asana_task(task_id)
-                    if not task:
-                        logging.debug("task #%d was deleted.", task_id)
-                        continue
+                if issue.closed_at:
+                    # close task
+                    app.asana.tasks.update(
+                        task['id'],
+                        {
+                        'completed': True
+                        })
+                else:
+                    # open task
+                    app.asana.tasks.update(
+                        task['id'],
+                        {
+                        'completed': False
+                        })
 
-                    if issue.closed_at:
-                        # close task
-                        app.asana.tasks.update(
-                            task['id'],
-                            {
-                            'completed': True
-                            })
-                    else:
-                        app.asana.tasks.update(
-                            task['id'],
-                            {
-                            'completed': False
-                            })
-
-                app.move_saved_issue_data(issue_number, ns, other_ns)
+                app.move_saved_issue_data(issue_number, other_state, state)
 
 
 
