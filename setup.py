@@ -5,7 +5,7 @@ __VERSION__ = "0.2.4"
 from distutils.core import setup
 setup(
   name = 'asana-hub',
-  packages = ['asana_hub'],
+  packages = ['asana_hub', 'asana_hub.actions'],
   version = __VERSION__,
   description = 'A python lib & tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.',
   license = 'MIT',
