@@ -8,6 +8,7 @@ Syncs completion status of issues and their matched tasks.
 
 import logging
 import re
+import collections
 
 from ..action import Action
 
@@ -16,6 +17,9 @@ ASANA_ID_RE = re.compile(r'#(\d{12,16})', re.M)
 
 ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(#(\d{12,})\s*)+', re.M)
 """Regular exprsssion to catch malformed data due to too many tasks."""
+
+_ms_label = lambda x: "_ms:%d"%x
+"""Converts a milestone id into an _ms prefixed string"""
 
 class Sync(Action):
     """Syncs completion status of issues and their matched tasks."""
@@ -41,6 +45,13 @@ class Sync(Action):
             help="[sync] create asana tasks for issues without tasks"
             )
 
+        parser.add_argument(
+            '-l', '--sync-labels',
+            action='store_true',
+            dest='sync_labels',
+            help="[sync] sync labels and milestones for each issue"
+            )
+
     def apply_tasks_to_issue(self, issue, tasks, issue_body=None):
         """Applies task numbers to an issue."""
         issue_body = issue_body or issue.body
@@ -53,6 +64,43 @@ class Sync(Action):
 
         return issue_body
 
+    def sync_labels(self, repo):
+        """Creates a local map of github labels/milestones to asana tags."""
+
+        logging.info("syncing new github.com labels to tags")
+
+        # create label tag map
+        ltm = self.app.data.get("label-tag-map", {})
+
+        # loop over labels, if they don't have tags, make them
+        for label in repo.get_labels():
+            tag_id = ltm.get(label.name, None)
+            if tag_id is None:
+
+                tag = self.app.asana.tags.create(name=label.name,
+                                      workspace=self.asana_ws_id,
+                                      notes="gh: %s" % label.url
+                                      )
+
+                logging.info("\t%s => tag %d", label.name, tag['id'])
+                ltm[label.name] = tag['id']
+
+        # loop over milestones, if they don't have tags, make them
+        for ms in repo.get_milestones(state="all"):
+            tag_id = ltm.get(_ms_label(ms.id), None)
+            if tag_id is None:
+
+                tag = self.app.asana.tags.create(name=ms.title,
+                                      workspace=self.asana_ws_id,
+                                      notes="gh: %s" % ms.url
+                                      )
+
+                logging.info("\t%s => tag %d", ms.title, tag['id'])
+                ltm[_ms_label(ms.id)] = tag['id']
+
+        self.app.data['label-tag-map'] = ltm
+        return ltm
+
     def run(self):
         app = self.app
 
@@ -60,8 +108,14 @@ class Sync(Action):
         app.authenticate()
 
         repo, project = self.get_repo_and_project()
-        asana_workspace_id = project['workspace']['id']
+        self.asana_ws_id = asana_workspace_id = project['workspace']['id']
         project_id = project['id']
+
+        # Sync project labels <-> asana tags
+        if app.args.sync_labels:
+            label_tag_map = self.sync_labels(repo)
+        else:
+            label_tag_map = {}
 
         # Iterate over the issues in the opposite state as the namespace
         # we are in. We simply want to toggle these guys.
@@ -93,6 +147,7 @@ class Sync(Action):
                 app.get_saved_issue_data(issue, 'closed').get('tasks', [])
             open_tasks = \
                 app.get_saved_issue_data(issue, 'open').get('tasks', [])
+
             recorded_tasks = set(open_tasks + closed_tasks)
 
             # Collect tasks named on github issue
@@ -118,6 +173,14 @@ class Sync(Action):
                     issue_body=issue_body)
                 status = "minified issue body"
 
+            # Sync tags and labels
+            labels = set()
+            if app.args.sync_labels:
+                for label in issue.get_labels():
+                    labels.add(label.name)
+                if issue.milestone:
+                    labels.add(_ms_label(issue.milestone.id))
+
             # If we have tasks already, this issue is cached.
             if recorded_tasks:
                 issue_data = app.get_saved_issue_data(issue_number, other_state)
@@ -139,6 +202,7 @@ class Sync(Action):
                     issue_body = self.apply_tasks_to_issue(issue, my_tasks,
                         issue_body=issue_body)
                     status = "reformatted asana tasks"
+
 
             # tasks named on issue need to be synced
             elif asana_match and issue_named_tasks:
@@ -171,12 +235,37 @@ class Sync(Action):
                     issue.state)
                 status = "new task #%d" % task_id
 
+                my_tasks.add(task_id)
+
             else:
                 status = "no task"
 
-            if status != "cached":
-                logging.info("\t%d) %s - %s",
-                    issue.number, issue.title, status)
+            logging.info("\t%d) %s - %s",
+                issue.number, issue.title, status)
+
+            # Sync tags/labels
+            for task in my_tasks:
+                task_data = app.get_saved_task_data(task)
+                tag_ids = task_data.get('tags') or []
+                try:
+                    added_tags = 0
+                    for label in labels:
+                        tag_id = label_tag_map.get(label)
+                        if not tag_id:
+                            continue
+                        if tag_id in tag_ids:
+                            continue
+                        tag_ids.append(tag_id)
+                        app.asana.tasks.add_tag(task, tag=tag_id)
+                        added_tags += 1
+
+                    if added_tags:
+                        logging.info("\t\t - added %d tags to %s",
+                                     added_tags, task)
+                        task_data['tags'] = tag_ids
+
+                except app.asana_errors.InvalidRequestError:
+                    logging.warn("warning: bad task %d", task)
 
         # Refresh status of issue/tasks
         logging.info("refreshing task statuses...")
@@ -191,6 +280,7 @@ class Sync(Action):
                     issue.number,
                     other_state, state,
                     task_id)
+
                 task = app.get_asana_task(task_id)
                 if not task:
                     issue_tasks.remove(task_id)

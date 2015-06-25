@@ -39,8 +39,10 @@ class JSONData(object):
         """Save data."""
 
         with open(self.filename, 'wb') as file:
+            self.prune()
             self.data['version'] = self.version
-            json.dump(self.data, file,
+            json.dump(self.data,
+                file,
                 sort_keys=True, indent=2)
 
     def __setitem__(self, key, value):
@@ -51,7 +53,20 @@ class JSONData(object):
         """Get a value by key."""
         return self.data[key]
 
-    def apply(self, key, value, prompt, on_load=lambda a: a, on_save=lambda a: a):
+    def prune(self, data=None):
+        if data is None:
+            data = self.data
+
+        empty_keys = [k for k, v in data.iteritems() if not v]
+        for k in empty_keys:
+            del data[k]
+
+        for v in data.values():
+            if isinstance(v, dict):
+                self.prune(data=v)
+
+    def apply(self, key, value, prompt=None,
+        on_load=lambda a: a, on_save=lambda a: a):
         """Applies a setting value to a key, if the value is not `None`.
 
         Returns without prompting if either of the following:
@@ -84,7 +99,7 @@ class JSONData(object):
         elif not key or not self.has_key(key):
             if callable(prompt):
                 value = prompt()
-            else:
+            elif prompt is not None:
                 value = raw_input(prompt + ": ")
 
             if value is None:
@@ -102,6 +117,12 @@ class JSONData(object):
     def has_key(self, *args, **kwargs):
         return self.data.has_key(*args, **kwargs)
 
-    def get(self, *args, **kwargs):
-        return self.data.get(*args, **kwargs)
+    def get(self, key, default_value=None):
+        try:
+            return self.data[key]
+        except KeyError:
+            if default_value is not None:
+                self.data[key] = default_value
+
+            return default_value
 

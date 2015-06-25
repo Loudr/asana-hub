@@ -54,6 +54,7 @@ class ToolApp(object):
 
         logging.debug("authenticating asana api.")
         self.asana = Client.basic_auth(self.settings['api-asana'])
+        self.asana_errors = asana_errors
         self.asana_me = self.asana.users.me()
         logging.debug("authenticating github api")
         self.github = Github(self.settings['api-github'])
@@ -125,6 +126,10 @@ class ToolApp(object):
     def make_asana_url(cls, project_id, task_id):
         """Returns a URL to an asana task."""
         return "https://app.asana.com/0/%d/%d" % (project_id, task_id)
+
+    ##################
+    ### Issue Data ###
+    ##################
 
     @classmethod
     def _issue_data_key(cls, namespace):
@@ -212,6 +217,55 @@ class ToolApp(object):
 
         self.data[other_issue_data_key] = other_issue_data
         self.data[issue_data_key] = issue_data
+
+    #################
+    ### Task Data ###
+    #################
+
+    @classmethod
+    def _task_data_key(cls):
+        """Returns key for task_data in data."""
+        return 'task-data'
+
+    def has_saved_task_data(self, task):
+        task_data_key = self._task_data_key()
+        task_data = self.data.get(task_data_key,
+            {})
+
+        if isinstance(task, int):
+            task_number = str(task)
+        elif isinstance(task, basestring):
+            task_number = task
+        else:
+            task_number = task['id']
+
+        return task_data.has_key(str(task_number))
+
+    def get_saved_task_data(self, task):
+        """Returns task data from local data.
+
+        Args:
+            task:
+                `int`. Asana task number.
+        """
+
+        if isinstance(task, int):
+            task_number = str(task)
+        elif isinstance(task, basestring):
+            task_number = task
+        else:
+            task_number = task['id']
+
+        task_data_key = self._task_data_key()
+        task_data = self.data.get(task_data_key, {})
+
+        _data = task_data.get(str(task_number), {})
+        task_data[str(task_number)] = _data
+        return _data
+
+    #############
+    ### Misc. ###
+    #############
 
     def announce_issue_to_task(self, asana_task_id, issue):
         """Creates a story on a task announcing the issue."""
