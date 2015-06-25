@@ -35,7 +35,7 @@ class Sync(Action):
         """
 
         parser.add_argument(
-            '--create-missing-tasks',
+            '-c', '--create-missing-tasks',
             action='store_true',
             dest='create_missing_tasks',
             help="[sync] create asana tasks for issues without tasks"
