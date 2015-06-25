@@ -67,7 +67,18 @@ class Sync(Action):
         # we are in. We simply want to toggle these guys.
         logging.info("collecting github.com issues")
         issues_map = {}
+
+        # Get the first issue, to limit syncing.
+        first_issue = app.data.get('first-issue')
+
         for issue in repo.get_issues(state="all"):
+
+            # bypass issues < `first-issue` setting.
+            if (first_issue is not None and
+                issue.number < first_issue):
+                logging.debug("stopping at first-issue: %d", first_issue)
+                break
+
             issue_number = str(issue.number)
             issue_body = issue.body
             asana_match = ASANA_ID_RE.search(issue_body)
