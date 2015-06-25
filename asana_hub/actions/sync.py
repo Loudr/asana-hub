@@ -18,6 +18,9 @@ ASANA_ID_RE = re.compile(r'#(\d{12,16})', re.M)
 ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(#(\d{12,})\s*)+', re.M)
 """Regular exprsssion to catch malformed data due to too many tasks."""
 
+_ms_label = lambda x: "_ms:%d"%x
+"""Converts a milestone id into an _ms prefixed string"""
+
 class Sync(Action):
     """Syncs completion status of issues and their matched tasks."""
 
@@ -81,6 +84,19 @@ class Sync(Action):
 
                 logging.info("\t%s => tag %d", label.name, tag['id'])
                 ltm[label.name] = tag['id']
+
+        # loop over milestones, if they don't have tags, make them
+        for ms in repo.get_milestones(state="all"):
+            tag_id = ltm.get(_ms_label(ms.id), None)
+            if tag_id is None:
+
+                tag = self.app.asana.tags.create(name=ms.title,
+                                      workspace=self.asana_ws_id,
+                                      notes="gh: %s" % ms.url
+                                      )
+
+                logging.info("\t%s => tag %d", ms.title, tag['id'])
+                ltm[_ms_label(ms.id)] = tag['id']
 
         self.app.data['label-tag-map'] = ltm
         return ltm
@@ -163,7 +179,7 @@ class Sync(Action):
                 for label in issue.get_labels():
                     labels.add(label.name)
                 if issue.milestone:
-                    labels.add(issue.milestone.title)
+                    labels.add(_ms_label(issue.milestone.id))
 
             # If we have tasks already, this issue is cached.
             if recorded_tasks:
