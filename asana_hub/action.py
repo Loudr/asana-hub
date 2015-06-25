@@ -33,7 +33,33 @@ class Action(object):
                 Arguments added here are server on
                 self.args.
         """
-        pass
+
+        parser.add_argument(
+            '-as-api', '--asana-api',
+            action='store',
+            nargs='?',
+            const='',
+            dest='asana_api',
+            help="[setting] asana api key.",
+            )
+
+        parser.add_argument(
+            '-gh-api', '--github-api',
+            action='store',
+            nargs='?',
+            const='',
+            dest='github_api',
+            help="[setting] github api token.",
+            )
+
+        parser.add_argument(
+            '--first-issue',
+            type=int,
+            action='store',
+            nargs='?',
+            const='',
+            help="[setting] only sync issues [FIRST_ISSUE] and above"
+            )
 
     def get_repo_and_project(self):
         """Returns repository and project."""
@@ -56,6 +82,14 @@ class Action(object):
             )
 
         assert project, "project not found."
+
+        # Set first issue
+        first_issue = app.data.apply('first-issue', app.args.first_issue,
+            "set the first issue to sync with [1 for new repos]",
+            on_save=int)
+
+        assert first_issue
+        assert first_issue >= 0, "issue must be positive"
 
         return repo, project
 

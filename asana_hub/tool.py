@@ -307,27 +307,12 @@ class ToolApp(object):
             help="path to save repository and project based data.",
             )
 
-        parser.add_argument(
-            '-as-api', '--asana-api',
-            action='store',
-            nargs='?',
-            const='',
-            dest='asana_api',
-            help="asana api key.",
-            )
-
-        parser.add_argument(
-            '-gh-api', '--github-api',
-            action='store',
-            nargs='?',
-            const='',
-            dest='github_api',
-            help="github api token.",
-            )
-
         # Add action arguments.
         for action in actions.values():
             action.add_arguments(parser)
+
+        # Add actions from the parent class. (The settings)
+        Action.add_arguments(parser)
 
         parser.add_argument('-v', '--version', action='version',
             version='%(prog)s ' + '%s' % version)
