@@ -56,8 +56,30 @@ complete any corresponding asana tasks.
 
 Issues that have no asana tasks are always reported as `- no task`.
 
-To create tasks automatically for issues that lack tasks, use `--create-missing-tasks`.
+#### Creating new tasks for issues on github
 
+To create tasks automatically for issues that lack tasks, use `--create-missing-tasks`.
+This will create asana tasks for issues that do not have `#ASANAID`s annotated.
+The tasks are created in the connected project. You can change this project with
+the `--project [project]` argument.
+
+#### Limiting sync to newer issues with `--first-issue`
+
+If you don't wish to create tasks for older issues, which is very likely,
+you can use the `--first-issue [issue]` argument to limit syncing to issues
+including and after an issue of your choice.
+
+For example, if you wanted to start using asana-hub for issues #12 and above,
+you would perform:
+
+```bash
+$ git checkout master  # keep master in sync, or potential merge conflicts loom
+$ asana-hub sync --first-issue 12 --create-missing-tasks
+
+```
+
+After using `first-issue`, its value is stored for subsequent calls to
+`asana-hub sync`, and other commands.
 
 ### Creating a new issue & task - `issue`
 
