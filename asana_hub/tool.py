@@ -286,6 +286,8 @@ class ToolApp(object):
             return self.asana.tasks.find_by_id(asana_task_id)
         except asana_errors.NotFoundError:
             return None
+        except asana_errors.ForbiddenError:
+            return None
 
     def __init__(self, version):
         """Accepts version of the app."""
