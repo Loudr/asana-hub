@@ -1,9 +1,10 @@
-# asana-hub v0.2.6
+# asana-hub
 
 [ ![PyPi version](https://img.shields.io/pypi/v/asana-hub.svg) ](https://pypi.python.org/pypi/asana-hub)
 [ ![PyPi downloads](https://img.shields.io/pypi/dm/asana-hub.svg) ](https://pypi.python.org/pypi/asana-hub)
 
-A python tool for creating issues and tasks simultaneously on github and asana, and keeping them in sync.
+asana-hub is a python tool for creating issues and tasks simultaneously on github and asana,
+and keeping them in sync.
 
 One-two-three Create an Asana *task* and matching Github *issue* in a repository,
 and _eventually_ keep them in sync.
