@@ -7,6 +7,7 @@ import logging
 import sys
 import os
 import traceback
+import multiprocessing
 
 try:
     from asana import Client
@@ -34,10 +35,27 @@ except ImportError:
     raise Exception("Could not import required packages.\n"
         "Did you pip install -r requirements.txt ?")
 
+import transport
+
 from .json_data import JSONData
 from .action import Action
 
 class ToolApp(object):
+
+    """Represents the AsanaHub app.
+
+    Attributes:
+
+        mp:
+            `multiprocessing.Pool`. Pool for multithreaded processing.
+    """
+
+    @classmethod
+    def uniqify(cls, seq):
+        """Returns a unique list of seq"""
+        seen = set()
+        seen_add = seen.add
+        return [ x for x in seq if x not in seen and not seen_add(x)]
 
     def authenticate(self):
         """Connects to Github and Asana and authenticates via OAuth."""
@@ -136,7 +154,7 @@ class ToolApp(object):
         """Returns key for issue_data in data."""
         return 'issue_data_%s' % namespace
 
-    def save_issue_data_task(self, issue, task, namespace='open'):
+    def save_issue_data_task(self, issue, task_id, namespace='open'):
         """Saves a issue data (tasks, etc.) to local data.
 
         Args:
@@ -151,9 +169,9 @@ class ToolApp(object):
         issue_data = self.get_saved_issue_data(issue, namespace)
 
         if not issue_data.has_key('tasks'):
-            issue_data['tasks'] = [task]
-        elif task not in issue_data['tasks']:
-            issue_data['tasks'].append(task)
+            issue_data['tasks'] = [task_id]
+        elif task_id not in issue_data['tasks']:
+            issue_data['tasks'].append(task_id)
 
     def has_saved_issue_data(self, issue, namespace='open'):
         issue_data_key = self._issue_data_key(namespace)
@@ -267,18 +285,6 @@ class ToolApp(object):
     ### Misc. ###
     #############
 
-    def announce_issue_to_task(self, asana_task_id, issue):
-        """Creates a story on a task announcing the issue."""
-        return self.asana.stories.create_on_task(asana_task_id,
-            {
-            'text':
-                "Git Issue #%d: \n"
-                "%s" % (
-                    issue.number,
-                    issue.html_url,
-                    )
-            })
-
     def get_asana_task(self, asana_task_id):
         """Retrieves a task from asana."""
 
@@ -288,6 +294,33 @@ class ToolApp(object):
             return None
         except asana_errors.ForbiddenError:
             return None
+
+    def sync_data(self):
+
+        # Updates transport data
+        transport.data.update(self.data.data)
+
+    def flush(self):
+
+        transport.flush(callback=self.flush_settings)
+
+    def flush_settings(self):
+
+        for setting in transport.iter_settings():
+            task = setting.pop('task')
+            if task == "save_issue_data_task":
+                self.save_issue_data_task(**setting)
+            elif task == "add_tags_to_task":
+                self.add_tags_to_task(**setting)
+            else:
+                raise Exception("Unknown settings task: %s" % task)
+
+    def add_tags_to_task(self, task_id, tag_ids):
+        task_data = self.get_saved_task_data(task_id)
+        task_tag_ids = task_data.get('tags') or []
+
+        logging.debug("\t\t - added %d tags to %s", len(tag_ids), task_id)
+        task_data['tags'] = self.uniqify(task_tag_ids + tag_ids)
 
     def __init__(self, version):
         """Accepts version of the app."""
@@ -383,6 +416,8 @@ class ToolApp(object):
         if self.args.verbose:
             ch.setLevel(logging.DEBUG)
 
+        logging.debug("Loading settings")
+
         # Load settings
         self.settings = JSONData(filename=self.args.settings_file,
             args=self.args, version=version)
@@ -400,7 +435,23 @@ class ToolApp(object):
 
             # Instantiate and run
             action = action_class(app=self, args=self.args)
+
+            # Authenticate app
+            self.authenticate()
+
+            # Begin transporters
+            transport.start(self)
+
+            # Run action
             action.run()
+
+            # Flush transport, calling flush_settings every pass
+            transport.flush(callback=self.flush_settings)
+
+            # Flush settings queue
+            logging.debug("Flushing settings updates")
+            self.flush_settings()
+
         except AssertionError as exc:
             logging.error("Error: %s", unicode(exc))
             logging.debug("%s", traceback.format_exc())
@@ -411,6 +462,10 @@ class ToolApp(object):
             self.exit_code = 129
             return
         finally:
+
+            # Shutdown transport
+            transport.shutdown()
+
 
             # Save settings
             self.settings.save()

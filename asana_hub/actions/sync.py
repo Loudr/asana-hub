@@ -10,13 +10,12 @@ import logging
 import re
 import collections
 
+from .. import transport
+
 from ..action import Action
 
 ASANA_ID_RE = re.compile(r'#(\d{12,16})', re.M)
 """Regular expression for capturing asana IDs."""
-
-ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(#(\d{12,})\s*)+', re.M)
-"""Regular exprsssion to catch malformed data due to too many tasks."""
 
 _ms_label = lambda x: "_ms:%d"%x
 """Converts a milestone id into an _ms prefixed string"""
@@ -57,9 +56,10 @@ class Sync(Action):
         issue_body = issue_body or issue.body
         task_numbers = "\n".join('#'+str(tid) for tid in tasks)
         if task_numbers:
-            new_body = ASANA_SECTION_RE.sub('', issue_body)
+            new_body = transport.ASANA_SECTION_RE.sub('', issue_body)
             new_body = new_body + "\n## Asana Tasks:\n\n%s" % task_numbers
-            issue.edit(body=new_body)
+            transport.issue_edit(issue,
+                                 body=new_body)
             return new_body
 
         return issue_body
@@ -104,9 +104,6 @@ class Sync(Action):
     def run(self):
         app = self.app
 
-        # OAuth 2 exchange.
-        app.authenticate()
-
         repo, project = self.get_repo_and_project()
         self.asana_ws_id = asana_workspace_id = project['workspace']['id']
         project_id = project['id']
@@ -136,7 +133,7 @@ class Sync(Action):
             issue_number = str(issue.number)
             issue_body = issue.body
             asana_match = ASANA_ID_RE.search(issue_body)
-            multi_match_sections = len(ASANA_SECTION_RE.findall(issue_body)) > 1
+            multi_match_sections = len(transport.ASANA_SECTION_RE.findall(issue_body)) > 1
 
             state = issue.state
             other_state = 'open' if state == 'closed' else 'closed'
@@ -159,14 +156,18 @@ class Sync(Action):
             tasks_to_save_to_this_issue = issue_named_tasks - recorded_tasks
             for task_id in tasks_to_save_to_this_issue:
                 status = "collected tasks"
-                app.save_issue_data_task(issue_number, task_id, issue.state)
+                transport.put_setting("save_issue_data_task",
+                                      issue=issue_number,
+                                      task_id=task_id,
+                                      namespace=issue.state)
 
             my_tasks = recorded_tasks.union(tasks_to_save_to_this_issue)
+            my_tasks = transport.mem.list(my_tasks)
 
             # Determine if there are multiple groups of ASANA TASKS
             # named.
             if multi_match_sections:
-                issue_body = ASANA_SECTION_RE.sub('', issue_body)
+                issue_body = transport.ASANA_SECTION_RE.sub('', issue_body)
                 asana_match = None
 
                 issue_body = self.apply_tasks_to_issue(issue, my_tasks,
@@ -198,11 +199,16 @@ class Sync(Action):
                         status = "updated with asana #s"
 
                 # If the section isn't formatted... let's reformat it.
-                elif not ASANA_SECTION_RE.search(issue_body):
+                elif not transport.ASANA_SECTION_RE.search(issue_body):
                     issue_body = self.apply_tasks_to_issue(issue, my_tasks,
                         issue_body=issue_body)
                     status = "reformatted asana tasks"
 
+                # Sync tags/labels
+                transport.put("sync_tags",
+                              tasks=my_tasks,
+                              labels=labels,
+                              label_tag_map=label_tag_map)
 
             # tasks named on issue need to be synced
             elif asana_match and issue_named_tasks:
@@ -212,60 +218,40 @@ class Sync(Action):
 
                 issues_map[issue_number] = (issue, my_tasks)
 
+                # Sync tags/labels
+                transport.put("sync_tags",
+                              tasks=my_tasks,
+                              labels=labels,
+                              label_tag_map=label_tag_map)
+
             elif self.args.create_missing_tasks and not issue.pull_request:
                 # missing task
                 # Create tasks for non-prs
-                task = app.asana.tasks.create_in_workspace(
-                    asana_workspace_id,
-                    {
-                        'name': issue.title,
-                        'notes': issue_body,
-                        # TODO: Correct assignee.
-                        'assignee': 'me',
-                        'projects': [project_id],
-                        'completed': bool(issue.closed_at)
-                    })
+                transport.put("create_missing_task",
+                              issue_number=issue.number,
+                              issue_state=issue.state,
+                              issue_html_url=issue.html_url,
+                              asana_workspace_id=asana_workspace_id,
+                              name=issue.title,
+                              notes=issue_body,
+                              # TODO: Correct assignee.
+                              assignee='me',
+                              projects=[project_id],
+                              completed=bool(issue.closed_at),
+                              tasks=my_tasks,
+                              label_tag_map=label_tag_map,
+                              labels=labels,
+                              )
 
-                # Announce task git issue
-                task_id = task['id']
-                app.announce_issue_to_task(task_id, issue)
-
-                # Save task to drive
-                app.save_issue_data_task(issue_number, task_id,
-                    issue.state)
-                status = "new task #%d" % task_id
-
-                my_tasks.add(task_id)
-
+                status = "new task"
             else:
                 status = "no task"
 
             logging.info("\t%d) %s - %s",
                 issue.number, issue.title, status)
 
-            # Sync tags/labels
-            for task in my_tasks:
-                task_data = app.get_saved_task_data(task)
-                tag_ids = task_data.get('tags') or []
-                try:
-                    added_tags = 0
-                    for label in labels:
-                        tag_id = label_tag_map.get(label)
-                        if not tag_id:
-                            continue
-                        if tag_id in tag_ids:
-                            continue
-                        tag_ids.append(tag_id)
-                        app.asana.tasks.add_tag(task, tag=tag_id)
-                        added_tags += 1
-
-                    if added_tags:
-                        logging.info("\t\t - added %d tags to %s",
-                                     added_tags, task)
-                        task_data['tags'] = tag_ids
-
-                except app.asana_errors.InvalidRequestError:
-                    logging.warn("warning: bad task %d", task)
+        # Flush work so that my_tasks is full.
+        app.flush()
 
         # Refresh status of issue/tasks
         logging.info("refreshing task statuses...")
@@ -288,22 +274,17 @@ class Sync(Action):
                     continue
 
                 if issue.closed_at:
-                    # close task
-                    app.asana.tasks.update(
-                        task['id'],
-                        {
-                        'completed': True
-                        })
+                    transport.put('update_task',
+                                  task_id=task['id'],
+                                  params={'completed': True})
                 else:
-                    # open task
-                    app.asana.tasks.update(
-                        task['id'],
-                        {
-                        'completed': False
-                        })
+                    transport.put('update_task',
+                                  task_id=task['id'],
+                                  params={'completed': False})
 
                 app.move_saved_issue_data(issue_number, other_state, state)
 
-
+        # Flush work so that all issues are moved.
+        app.flush()
 
 

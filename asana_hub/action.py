@@ -91,6 +91,8 @@ class Action(object):
         assert first_issue
         assert first_issue >= 0, "issue must be positive"
 
+        app.sync_data()
+
         return repo, project
 
     @classmethod
