@@ -2,6 +2,10 @@
 
 ## HEAD
 
+## 0.2.9 - ganondorf prime
+
+- Fixes `asana-hub sync` regression. (#57)
+
 ## 0.2.8 - ganondorf
 
 - **Multiprocessing requests.** (#47)
