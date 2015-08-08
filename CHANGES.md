@@ -2,22 +2,20 @@
 
 ## HEAD
 
-Adds support for:
-
 - #47 - **Multiprocessing requests.**
     - Enables parallel HTTP requests for `sync`.
 
-- #46 - Bug fix for missing github issue.
+- #51 - Github issues now include links to Asana tasks.
+
+- #46 - BUG: fix for missing github issue.
 
 ## 0.2.7 - mary-ann
 
-- #45 - Bug fix for ForbiddenError.
+- #45 - BUG: fix for ForbiddenError.
 
 ## 0.2.6 - pippin
 
-Adds support for:
-
-- Syncing of milestones to comments.
+- **Syncing of milestones to labels**.
     - `asana-hub sync --sync-labels` (or `-l`)
 
 Previous releases:
