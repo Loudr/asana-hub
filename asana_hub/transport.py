@@ -36,7 +36,7 @@ settings_queue = mem.Queue()
 processes = []
 """Contains running workers."""
 
-ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(#(\d{12,})\s*)+', re.M)
+ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(.*#(\d{12,}))+', re.M)
 """Regular exprsssion to catch malformed data due to too many tasks."""
 
 class TransportWorker(object):
@@ -173,10 +173,11 @@ class TransportWorker(object):
         issue = repo.get_issue(issue_number)
         issue.edit(body=body)
 
+
     def apply_tasks_to_issue(self, tasks, issue_number, issue_body):
         """Applies task numbers to an issue."""
         issue_body = issue_body
-        task_numbers = "\n".join('#'+str(tid) for tid in tasks)
+        task_numbers = format_task_numbers_with_links(tasks)
         if task_numbers:
             new_body = ASANA_SECTION_RE.sub('', issue_body)
             new_body = new_body + "\n## Asana Tasks:\n\n%s" % task_numbers
@@ -273,3 +274,17 @@ def iter_settings():
             yield item
         except Queue.Empty:
             return
+
+def format_task_numbers_with_links(tasks):
+    """Returns formatting for the tasks section of asana."""
+
+    project_id = data.get('asana-project', None)
+
+    def _task_format(task_id):
+        if project_id:
+            asana_url = tool.ToolApp.make_asana_url(project_id, task_id)
+            return "[#%d](%s)" % (task_id, asana_url)
+        else:
+            return "#%d" % task_id
+
+    return "\n".join([_task_format(tid) for tid in tasks])

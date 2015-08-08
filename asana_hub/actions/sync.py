@@ -54,7 +54,7 @@ class Sync(Action):
     def apply_tasks_to_issue(self, issue, tasks, issue_body=None):
         """Applies task numbers to an issue."""
         issue_body = issue_body or issue.body
-        task_numbers = "\n".join('#'+str(tid) for tid in tasks)
+        task_numbers = transport.format_task_numbers_with_links(tasks)
         if task_numbers:
             new_body = transport.ASANA_SECTION_RE.sub('', issue_body)
             new_body = new_body + "\n## Asana Tasks:\n\n%s" % task_numbers
