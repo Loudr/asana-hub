@@ -224,6 +224,16 @@ class Sync(Action):
                               labels=labels,
                               label_tag_map=label_tag_map)
 
+                # Create story
+                transport.put("create_story",
+                    task_id=task_id,
+                    text="Git Issue #%d: \n"
+                          "%s" % (
+                            issue.number,
+                            issue.html_url,
+                            )
+                    )
+
             elif self.args.create_missing_tasks and not issue.pull_request:
                 # missing task
                 # Create tasks for non-prs
