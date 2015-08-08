@@ -145,12 +145,15 @@ def put_setting(task, **kwargs):
     kwargs['task'] = task
     settings_queue.put(kwargs)
 
-def flush():
+def flush(callback=None):
     """Waits until queue is empty."""
 
     while True:
         if shutdown_event.is_set():
             return
+
+        if callable(callback):
+            callback()
 
         try:
             item = queue.get(timeout=1)

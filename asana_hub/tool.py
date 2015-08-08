@@ -293,6 +293,10 @@ class ToolApp(object):
         # Updates transport data
         transport.data.update(self.data.data)
 
+    def flush(self):
+
+        transport.flush(callback=self.flush_settings)
+
     def flush_settings(self):
 
         for setting in transport.iter_settings():
@@ -425,6 +429,9 @@ class ToolApp(object):
             # Run action
             action.run()
 
+            # Flush transport, calling flush_settings every pass
+            transport.flush(callback=self.flush_settings)
+
             # Flush settings queue
             logging.debug("Flushing settings updates")
             self.flush_settings()
@@ -440,11 +447,9 @@ class ToolApp(object):
             return
         finally:
 
-            # Flush transport
-            transport.flush()
-
             # Shutdown transport
             transport.shutdown()
+
 
             # Save settings
             self.settings.save()

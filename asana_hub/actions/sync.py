@@ -237,7 +237,7 @@ class Sync(Action):
                 issue.number, issue.title, status)
 
         # Flush work so that my_tasks is full.
-        transport.flush()
+        app.flush()
 
         logging.info("syncing tags")
 
