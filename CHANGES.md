@@ -7,6 +7,8 @@ Adds support for:
 - #47 - **Multiprocessing requests.**
     - Enables parallel HTTP requests for `sync`.
 
+- #46 - Bug fix for missing github issue.
+
 ## 0.2.7 - mary-ann
 
 - #45 - Bug fix for ForbiddenError.
