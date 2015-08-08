@@ -241,9 +241,9 @@ class Sync(Action):
                               issue_number=issue.number,
                               issue_state=issue.state,
                               issue_html_url=issue.html_url,
+                              issue_body=issue.body,
                               asana_workspace_id=asana_workspace_id,
                               name=issue.title,
-                              notes=issue_body,
                               # TODO: Correct assignee.
                               assignee='me',
                               projects=[project_id],

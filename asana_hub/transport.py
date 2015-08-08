@@ -80,13 +80,13 @@ class TransportWorker(object):
     def create_missing_task(self,
                             asana_workspace_id,
                             name,
-                            notes,
                             assignee,
                             projects,
                             completed,
                             issue_number,
                             issue_html_url,
                             issue_state,
+                            issue_body,
                             tasks,
                             labels,
                             label_tag_map):
@@ -97,7 +97,7 @@ class TransportWorker(object):
             asana_workspace_id,
             {
                 'name': name,
-                'notes': notes,
+                'notes': issue_body,
                 'assignee': assignee,
                 'projects': projects,
                 'completed': completed,
@@ -113,6 +113,12 @@ class TransportWorker(object):
                     issue_number,
                     issue_html_url,
                     )
+            )
+
+        put("apply_tasks_to_issue",
+            tasks=[task_id],
+            issue_number=issue_number,
+            issue_body=issue_body,
             )
 
         # Save task to drive
