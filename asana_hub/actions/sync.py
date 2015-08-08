@@ -117,7 +117,6 @@ class Sync(Action):
         # Iterate over the issues in the opposite state as the namespace
         # we are in. We simply want to toggle these guys.
         logging.info("collecting github.com issues")
-        issues_map = {}
 
         # Get the first issue, to limit syncing.
         first_issue = app.data.get('first-issue')
@@ -135,8 +134,6 @@ class Sync(Action):
             asana_match = ASANA_ID_RE.search(issue_body)
             multi_match_sections = len(transport.ASANA_SECTION_RE.findall(issue_body)) > 1
 
-            state = issue.state
-            other_state = 'open' if state == 'closed' else 'closed'
             status = "cached"
 
             # Collect closed and opened tasks known for this issue.
@@ -184,11 +181,6 @@ class Sync(Action):
 
             # If we have tasks already, this issue is cached.
             if recorded_tasks:
-                issue_data = app.get_saved_issue_data(issue_number, other_state)
-                issue_cached_tasks = issue_data.get('tasks', [])
-
-                issues_map[issue_number] = (issue, issue_cached_tasks)
-
                 # If the body is missing asana tasks, add all those we know
                 # about.
                 if not asana_match:
@@ -210,13 +202,17 @@ class Sync(Action):
                               labels=labels,
                               label_tag_map=label_tag_map)
 
+                for task in my_tasks:
+                    transport.put('update_task',
+                                  task_id=task,
+                                  params={'completed': bool(issue.closed_at)})
+
             # tasks named on issue need to be synced
             elif asana_match and issue_named_tasks:
                 status = "connecting tasks"
                 self.apply_tasks_to_issue(issue, my_tasks,
                     issue_body=issue_body)
 
-                issues_map[issue_number] = (issue, my_tasks)
 
                 # Sync tags/labels
                 transport.put("sync_tags",
@@ -233,6 +229,11 @@ class Sync(Action):
                             issue.html_url,
                             )
                     )
+
+                for task in my_tasks:
+                    transport.put('update_task',
+                                  task_id=task,
+                                  params={'completed': bool(issue.closed_at)})
 
             elif self.args.create_missing_tasks and not issue.pull_request:
                 # missing task
@@ -260,41 +261,7 @@ class Sync(Action):
             logging.info("\t%d) %s - %s",
                 issue.number, issue.title, status)
 
-        # Flush work so that my_tasks is full.
-        app.flush()
-
-        # Refresh status of issue/tasks
-        logging.info("refreshing task statuses...")
-        for issue_number, (issue, issue_tasks) in issues_map.iteritems():
-
-            state = issue.state
-            other_state = 'open' if state == 'closed' else 'closed'
-
-            # Get tasks in the issue that are outdated.
-            for task_id in issue_tasks:
-                logging.info("\t#%d - updating (%s->%s) - %d",
-                    issue.number,
-                    other_state, state,
-                    task_id)
-
-                task = app.get_asana_task(task_id)
-                if not task:
-                    issue_tasks.remove(task_id)
-                    logging.debug("task #%d was deleted.", task_id)
-                    continue
-
-                if issue.closed_at:
-                    transport.put('update_task',
-                                  task_id=task['id'],
-                                  params={'completed': True})
-                else:
-                    transport.put('update_task',
-                                  task_id=task['id'],
-                                  params={'completed': False})
-
-                app.move_saved_issue_data(issue_number, other_state, state)
-
-        # Flush work so that all issues are moved.
+        # Flush work.
         app.flush()
 
 

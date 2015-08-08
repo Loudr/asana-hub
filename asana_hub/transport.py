@@ -195,8 +195,11 @@ class TransportWorker(object):
         return issue_body
 
     def update_task(self, task_id, params):
-        self.asana.tasks.update(task_id, params)
 
+        try:
+            self.asana.tasks.update(task_id, params)
+        except (asana_errors.InvalidRequestError, asana_errors.NotFoundError):
+            logging.warn("warning: bad task %d", task_id)
 
 def run_worker(settings):
     try:
