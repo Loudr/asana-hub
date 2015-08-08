@@ -2,16 +2,16 @@
 
 ## HEAD
 
-- #47 - **Multiprocessing requests.**
+- **Multiprocessing requests.** (#47)
     - Enables parallel HTTP requests for `sync`.
 
-- #51 - Github issues now include links to Asana tasks.
+- Github issues now include links to Asana tasks. (#51)
 
-- #46 - BUG: fix for missing github issue.
+- BUG: fix for missing github issue. (#46)
 
 ## 0.2.7 - mary-ann
 
-- #45 - BUG: fix for ForbiddenError.
+- BUG: fix for ForbiddenError. (#45)
 
 ## 0.2.6 - pippin
 
