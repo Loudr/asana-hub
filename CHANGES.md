@@ -1,5 +1,16 @@
 # asana-hub Changelog
 
+## HEAD
+
+Adds support for:
+
+- #47 - **Multiprocessing requests.**
+    - Enables parallel HTTP requests for `sync`.
+
+## 0.2.7 - mary-ann
+
+- #45 - Bug fix for ForbiddenError.
+
 ## 0.2.6 - pippin
 
 Adds support for:
