@@ -2,10 +2,13 @@
 
 ## HEAD
 
+## 0.2.8 - ganondorf
+
 - **Multiprocessing requests.** (#47)
     - Enables parallel HTTP requests for `sync`.
 
 - Github issues now include links to Asana tasks. (#51)
+    - Issues are now updated with task links on initial connection. (#54)
 
 - BUG: fix for missing github issue. (#46)
 
