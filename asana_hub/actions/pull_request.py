@@ -57,9 +57,6 @@ class PullRequest(Action):
     def run(self):
         app = self.app
 
-        # OAuth 2 exchange.
-        app.authenticate()
-
         repo, project = self.get_repo_and_project()
         project_id = project['id']
 

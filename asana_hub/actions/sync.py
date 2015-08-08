@@ -10,6 +10,8 @@ import logging
 import re
 import collections
 
+from .. import transport
+
 from ..action import Action
 
 ASANA_ID_RE = re.compile(r'#(\d{12,16})', re.M)
@@ -59,7 +61,8 @@ class Sync(Action):
         if task_numbers:
             new_body = ASANA_SECTION_RE.sub('', issue_body)
             new_body = new_body + "\n## Asana Tasks:\n\n%s" % task_numbers
-            issue.edit(body=new_body)
+            transport.issue_edit(issue,
+                                 body=new_body)
             return new_body
 
         return issue_body
@@ -103,9 +106,6 @@ class Sync(Action):
 
     def run(self):
         app = self.app
-
-        # OAuth 2 exchange.
-        app.authenticate()
 
         repo, project = self.get_repo_and_project()
         self.asana_ws_id = asana_workspace_id = project['workspace']['id']
@@ -162,6 +162,7 @@ class Sync(Action):
                 app.save_issue_data_task(issue_number, task_id, issue.state)
 
             my_tasks = recorded_tasks.union(tasks_to_save_to_this_issue)
+            my_tasks = transport.mem.list(my_tasks)
 
             # Determine if there are multiple groups of ASANA TASKS
             # named.
@@ -215,57 +216,55 @@ class Sync(Action):
             elif self.args.create_missing_tasks and not issue.pull_request:
                 # missing task
                 # Create tasks for non-prs
-                task = app.asana.tasks.create_in_workspace(
-                    asana_workspace_id,
-                    {
-                        'name': issue.title,
-                        'notes': issue_body,
-                        # TODO: Correct assignee.
-                        'assignee': 'me',
-                        'projects': [project_id],
-                        'completed': bool(issue.closed_at)
-                    })
+                transport.put("create_missing_task",
+                              issue_number=issue.number,
+                              issue_state=issue.state,
+                              issue_html_url=issue.html_url,
+                              asana_workspace_id=asana_workspace_id,
+                              name=issue.title,
+                              notes=issue_body,
+                              # TODO: Correct assignee.
+                              assignee='me',
+                              projects=[project_id],
+                              completed=bool(issue.closed_at),
+                              tasks=my_tasks)
 
-                # Announce task git issue
-                task_id = task['id']
-                app.announce_issue_to_task(task_id, issue)
-
-                # Save task to drive
-                app.save_issue_data_task(issue_number, task_id,
-                    issue.state)
-                status = "new task #%d" % task_id
-
-                my_tasks.add(task_id)
-
+                status = "new task"
             else:
                 status = "no task"
 
             logging.info("\t%d) %s - %s",
                 issue.number, issue.title, status)
 
-            # Sync tags/labels
-            for task in my_tasks:
-                task_data = app.get_saved_task_data(task)
-                tag_ids = task_data.get('tags') or []
-                try:
-                    added_tags = 0
-                    for label in labels:
-                        tag_id = label_tag_map.get(label)
-                        if not tag_id:
-                            continue
-                        if tag_id in tag_ids:
-                            continue
-                        tag_ids.append(tag_id)
-                        app.asana.tasks.add_tag(task, tag=tag_id)
-                        added_tags += 1
+        # Flush work so that my_tasks is full.
+        transport.flush()
 
-                    if added_tags:
-                        logging.info("\t\t - added %d tags to %s",
-                                     added_tags, task)
-                        task_data['tags'] = tag_ids
+        logging.info("syncing tags")
 
-                except app.asana_errors.InvalidRequestError:
-                    logging.warn("warning: bad task %d", task)
+        # Sync tags/labels
+        for task in my_tasks:
+            task_data = app.get_saved_task_data(task)
+            tag_ids = task_data.get('tags') or []
+            try:
+                added_tags = 0
+                for label in labels:
+                    tag_id = label_tag_map.get(label)
+                    if not tag_id:
+                        continue
+                    if tag_id in tag_ids:
+                        continue
+                    tag_ids.append(tag_id)
+                    transport.put()
+                    app.asana.tasks.add_tag(task, tag=tag_id)
+                    added_tags += 1
+
+                if added_tags:
+                    logging.info("\t\t - added %d tags to %s",
+                                 added_tags, task)
+                    task_data['tags'] = tag_ids
+
+            except app.asana_errors.InvalidRequestError:
+                logging.warn("warning: bad task %d", task)
 
         # Refresh status of issue/tasks
         logging.info("refreshing task statuses...")

@@ -48,7 +48,4 @@ class Connect(Action):
     def run(self):
         app = self.app
 
-        # OAuth 2 exchange.
-        app.authenticate()
-
         logging.info("connected ok.")
