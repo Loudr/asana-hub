@@ -50,6 +50,13 @@ class ToolApp(object):
             `multiprocessing.Pool`. Pool for multithreaded processing.
     """
 
+    @classmethod
+    def uniqify(cls, seq):
+        """Returns a unique list of seq"""
+        seen = set()
+        seen_add = seen.add
+        return [ x for x in seq if x not in seen and not seen_add(x)]
+
     def authenticate(self):
         """Connects to Github and Asana and authenticates via OAuth."""
         if self.oauth:
@@ -303,8 +310,17 @@ class ToolApp(object):
             task = setting.pop('task')
             if task == "save_issue_data_task":
                 self.save_issue_data_task(**setting)
+            elif task == "add_tags_to_task":
+                self.add_tags_to_task(**setting)
             else:
                 raise Exception("Unknown settings task: %s" % task)
+
+    def add_tags_to_task(self, task_id, tag_ids):
+        task_data = self.get_saved_task_data(task_id)
+        task_tag_ids = task_data.get('tags') or []
+
+        logging.debug("\t\t - added %d tags to %s", len(tag_ids), task_id)
+        task_data['tags'] = self.uniqify(task_tag_ids + tag_ids)
 
     def __init__(self, version):
         """Accepts version of the app."""
