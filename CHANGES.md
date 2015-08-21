@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.2.11 - andrew lloyd
+
 - Adds transport task retrying and better exception handling. (#64)
 
 ## 0.2.10 - tailor spiff
