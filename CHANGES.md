@@ -2,6 +2,8 @@
 
 ## HEAD
 
+- BUG: Fixes regression bug of ForbiddenError on task updates. (#45)
+
 ## 0.2.9 - ganondorf prime
 
 - Fixes `asana-hub sync` regression. (#57)

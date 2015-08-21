@@ -196,10 +196,30 @@ class TransportWorker(object):
 
     def update_task(self, task_id, params):
 
-        try:
-            self.asana.tasks.update(task_id, params)
-        except (asana_errors.InvalidRequestError, asana_errors.NotFoundError):
-            logging.warn("warning: bad task %d", task_id)
+        tries = 0
+        while True:
+            try:
+                try:
+                    self.asana.tasks.update(task_id, params)
+
+                except (asana_errors.InvalidRequestError,
+                        asana_errors.NotFoundError):
+                    logging.warn("warning: bad task %d", task_id)
+
+                except asana_errors.ForbiddenError:
+                    logging.warn("forbidden error when updating task %d",
+                                 task_id)
+
+                except asana_errors.NotFoundError:
+                    logging.warn("task %d not found, likely moved", task_id)
+
+                break
+            except asana_errors.RetryableAsanaError, retry_exc:
+                tries += 1
+                logging.warn("retry exception %r on try %d", retry_exc, tries)
+
+                if tries >= 3:
+                    raise
 
 def run_worker(settings):
     try:
