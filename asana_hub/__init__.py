@@ -3,7 +3,7 @@ Github.com / Asana.com issue tool.
 Synchronises creation of github issues and asana tasks.
 """
 
-__VERSION__ = "0.2.9"
+__VERSION__ = "0.2.10"
 
 from .tool import ToolApp
 
