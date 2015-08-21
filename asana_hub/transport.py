@@ -177,7 +177,7 @@ class TransportWorker(object):
         if not task_id or not tag_id:
             return
 
-        self.asana.tasks.add_tag(task_id=task_id, tag=tag_id)
+        self.asana.tasks.add_tag(task=task_id, tag=tag_id)
 
     @transport_task
     def sync_tags(self, tasks, labels, label_tag_map):
