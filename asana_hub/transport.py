@@ -39,6 +39,40 @@ processes = []
 ASANA_SECTION_RE = re.compile(r'## Asana Tasks:\s+(.*#(\d{12,}))+', re.M)
 """Regular exprsssion to catch malformed data due to too many tasks."""
 
+def transport_task(func):
+    """Decorator for retrying tasks with special cases."""
+
+    def wrapped_func(*args, **kwargs):
+        tries = 0
+        while True:
+            try:
+                try:
+                    return func(*args, **kwargs)
+
+                except (asana_errors.InvalidRequestError,
+                        asana_errors.NotFoundError), exc:
+                    logging.warn("warning: invalid request: %r", exc)
+
+                except asana_errors.ForbiddenError, exc:
+                    logging.warn("forbidden error: %r", exc)
+
+                except asana_errors.NotFoundError, exc:
+                    logging.warn("not found error: %r", exc)
+
+                return None
+            except asana_errors.RetryableAsanaError, retry_exc:
+                tries += 1
+                logging.warn("retry exception %r on try %d", retry_exc, tries)
+
+                if tries >= 3:
+                    raise
+            except Exception, exc:
+                logging.exception("Exception in transport.")
+                return
+
+    return wrapped_func
+
+
 class TransportWorker(object):
 
     """Represents a single thread worker that responds to a queue of tasks.
@@ -50,9 +84,6 @@ class TransportWorker(object):
         self.asana_me = self.asana.users.me()
         self.github = Github(self.settings['api-github'])
         self.github_user = self.github.get_user()
-
-    def get_repo(self):
-        return self.github.get_repo(data['github-repo'])
 
     def run(self):
 
@@ -77,6 +108,7 @@ class TransportWorker(object):
             logging.debug("running packet: %s", packet_task)
             method(**packet)
 
+    @transport_task
     def create_missing_task(self,
                             asana_workspace_id,
                             name,
@@ -135,51 +167,55 @@ class TransportWorker(object):
             labels=labels,
             label_tag_map=label_tag_map)
 
+    @transport_task
+    def get_repo(self):
+        return self.github.get_repo(data['github-repo'])
+
+    @transport_task
     def add_tag(self, task_id, tag_id):
 
-        try:
-            self.asana.tasks.add_tag(task_id=task_id, tag=tag_id)
-        except asana_errors.InvalidRequestError:
-            logging.warn("warning: bad task %d", task_id)
+        if not task_id or not tag_id:
+            return
 
+        self.asana.tasks.add_tag(task_id=task_id, tag=tag_id)
+
+    @transport_task
     def sync_tags(self, tasks, labels, label_tag_map):
 
         for task_id in tasks:
             tag_ids = []
-            try:
-                added_tags = 0
-                for label in labels:
-                    tag_id = label_tag_map.get(label)
-                    if not tag_id:
-                        continue
-                    # if tag_id in tag_ids:
-                    #     continue
-                    tag_ids.append(tag_id)
-                    put("add_tag",
-                        task_id=task_id,
-                        tag_id=tag_id)
-                    added_tags += 1
 
-                if added_tags:
-                    put_setting("add_tags_to_task",
-                                task_id=task_id,
-                                tag_ids=tag_ids)
+            added_tags = 0
+            for label in labels:
+                tag_id = label_tag_map.get(label)
+                if not tag_id:
+                    continue
+                # if tag_id in tag_ids:
+                #     continue
+                tag_ids.append(tag_id)
+                put("add_tag",
+                    task_id=task_id,
+                    tag_id=tag_id)
+                added_tags += 1
 
-            except asana_errors.InvalidRequestError:
-                logging.warn("warning: bad task %d", task_id)
+            if added_tags:
+                put_setting("add_tags_to_task",
+                            task_id=task_id,
+                            tag_ids=tag_ids)
 
+    @transport_task
     def create_story(self, task_id, text):
-
         self.asana.stories.create_on_task(task_id,
                                           { 'text': text })
 
+    @transport_task
     def issue_edit(self, issue_number, body):
 
         repo = self.get_repo()
         issue = repo.get_issue(issue_number)
         issue.edit(body=body)
 
-
+    @transport_task
     def apply_tasks_to_issue(self, tasks, issue_number, issue_body):
         """Applies task numbers to an issue."""
         issue_body = issue_body
@@ -194,32 +230,9 @@ class TransportWorker(object):
 
         return issue_body
 
+    @transport_task
     def update_task(self, task_id, params):
-
-        tries = 0
-        while True:
-            try:
-                try:
-                    self.asana.tasks.update(task_id, params)
-
-                except (asana_errors.InvalidRequestError,
-                        asana_errors.NotFoundError):
-                    logging.warn("warning: bad task %d", task_id)
-
-                except asana_errors.ForbiddenError:
-                    logging.warn("forbidden error when updating task %d",
-                                 task_id)
-
-                except asana_errors.NotFoundError:
-                    logging.warn("task %d not found, likely moved", task_id)
-
-                break
-            except asana_errors.RetryableAsanaError, retry_exc:
-                tries += 1
-                logging.warn("retry exception %r on try %d", retry_exc, tries)
-
-                if tries >= 3:
-                    raise
+        self.asana.tasks.update(task_id, params)
 
 def run_worker(settings):
     try:

@@ -2,6 +2,8 @@
 
 ## HEAD
 
+- Adds transport task retrying and better exception handling. (#64)
+
 ## 0.2.10 - tailor spiff
 
 - BUG: Fixes regression bug of ForbiddenError on task updates. (#45)
