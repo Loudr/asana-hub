@@ -2,6 +2,8 @@
 
 ## HEAD
 
+## 0.2.10 - tailor spiff
+
 - BUG: Fixes regression bug of ForbiddenError on task updates. (#45)
 
 ## 0.2.9 - ganondorf prime
